@@ -1,12 +1,12 @@
 # go-muyuan（木鸢）
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/xiaoLangZe/go-muyuan/zh-CN.svg)](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan/zh-CN)
+[![Go Reference](https://pkg.go.dev/badge/github.com/xiaoLangZe/go-muyuan.svg)](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue.svg)](https://go.dev/)
 
 [English](../README.md) | **中文**
 
-📖 **[文档站](https://xiaoLangZe.github.io/go-muyuan/zh-CN/)** ·
-📦 [pkg.go.dev](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan/zh-CN) ·
+📖 **[文档站](https://xiaoLangZe.github.io/go-muyuan/)** ·
+📦 [pkg.go.dev](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan) ·
 🐙 [GitHub](https://github.com/xiaoLangZe/go-muyuan)
 
 本项目中文名为 **木鸢**，模块路径里的 `muyuan` 即其拼音。
@@ -35,44 +35,30 @@
 - **重试** —— 瞬时故障退避重试；永久故障（404、403）立即失败。
 - **SSRF 防护** —— 仅 http/https，校验与拨号**双重**拒绝内网地址。
 
-## 两个模块
-
-本仓库提供两个**互相独立**的 Go 模块，注释语言不同，按需选择一个即可：
-
-| 模块 | 导入路径 | 说明 |
-| --- | --- | --- |
-| 英文版 | `github.com/xiaoLangZe/go-muyuan` | 根模块 |
-| 简体中文版 | `github.com/xiaoLangZe/go-muyuan/zh-CN` | 独立模块，自带 `internal/`，不依赖英文版 |
-
-两者互不引用：导入英文版不会拉入 `zh-CN`，导入中文版也不会拉入英文版。
-
-## 安装（简体中文版）
+## 安装
 
 要求 **Go 1.26 或更高版本**。当前发布版本为 **v0.1.0**。
 
 ```bash
-go get github.com/xiaoLangZe/go-muyuan/zh-CN
+go get github.com/xiaoLangZe/go-muyuan
 ```
 
-需要可复现的版本时，显式指定 `@v0.1.0`。由于中文版是嵌套模块，它的发布标签带路径前缀，
-即 `zh-CN/v0.1.0`。
+需要可复现的版本时，显式指定 `@v0.1.0`。
 
 包名是 `downloader`，与模块路径最后一段不一致，所以加别名更清楚：
 
 ```go
-import downloader "github.com/xiaoLangZe/go-muyuan/zh-CN"
+import downloader "github.com/xiaoLangZe/go-muyuan"
 ```
 
 要改库本身，可克隆 <https://github.com/xiaoLangZe/go-muyuan.git> 并用
 `replace` 指向本地目录：
 
 ```text
-require github.com/xiaoLangZe/go-muyuan/zh-CN v0.0.0
+require github.com/xiaoLangZe/go-muyuan v0.0.0
 
-replace github.com/xiaoLangZe/go-muyuan/zh-CN => /绝对路径/go-muyuan/zh-CN
+replace github.com/xiaoLangZe/go-muyuan => /绝对路径/go-muyuan
 ```
-
-要改用英文版，把上面所有路径末尾的 `/zh-CN` 去掉即可。
 
 ## 快速开始
 

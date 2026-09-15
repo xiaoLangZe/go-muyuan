@@ -14,14 +14,6 @@ go get github.com/xiaoLangZe/go-muyuan
 
 当前发布版本为 **v0.1.0**，需要可复现的版本时可显式指定 `@v0.1.0`。
 
-简体中文版是另一个独立模块，把路径末尾加上 `/zh-CN` 即可（详见[简介](./introduction)）：
-
-```bash
-go get github.com/xiaoLangZe/go-muyuan/zh-CN
-```
-
-因为中文版是嵌套模块，它的发布标签带路径前缀，即 `zh-CN/v0.1.0`。
-
 然后导入（包名是 `downloader`，与模块路径最后一段不一致，所以加个别名更清楚）：
 
 ```go

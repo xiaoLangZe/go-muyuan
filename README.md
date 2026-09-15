@@ -64,21 +64,6 @@ require github.com/xiaoLangZe/go-muyuan v0.0.0
 replace github.com/xiaoLangZe/go-muyuan => /absolute/path/to/go-muyuan
 ```
 
-### Simplified Chinese version
-
-A Simplified-Chinese variant lives in its own independent module:
-
-```bash
-go get github.com/xiaoLangZe/go-muyuan/zh-CN
-```
-
-It ships its own `internal/` packages and never imports the English module —
-and importing the English module never pulls in `zh-CN`. See
-[zh-CN/README.md](zh-CN/README.md).
-
-Because it is a nested module, its releases are tagged with a path prefix: the
-v0.1.0 release tag is `zh-CN/v0.1.0`.
-
 ## Quick start
 
 ```go
