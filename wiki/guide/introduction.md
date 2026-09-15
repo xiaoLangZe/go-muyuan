@@ -47,3 +47,7 @@
 - [快速上手](./getting-started) —— 安装并跑第一个下载
 - [配置选项](./configuration) —— `Config` 全字段与四种模式
 - [运行时控制](./runtime-control) —— 信号与方法
+
+## 关于本文档
+
+本手册是 `wiki/` 下的 VitePress 项目，默认中文，可切换英文。改动推送到 `main` 后，`.github/workflows/deploy-docs.yml` 会自动构建并发布到 <https://xiaoLangZe.github.io/go-muyuan/>；本地预览用 `cd wiki && npm install && npm run dev`。补充文档时请同时更新 `guide/`（或 `api/`）下的中英两份对应页面。

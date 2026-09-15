@@ -47,3 +47,7 @@ A common point of confusion: a "worker goroutine" in the implementation is one *
 - [Quick Start](./getting-started) — install and run your first download
 - [Configuration](./configuration) — all `Config` fields and the four modes
 - [Runtime Control](./runtime-control) — signals and methods
+
+## About this manual
+
+This manual is a VitePress project under `wiki/`, Chinese by default with an English translation. Once a change is pushed to `main`, `.github/workflows/deploy-docs.yml` builds and publishes it to <https://xiaoLangZe.github.io/go-muyuan/>. To preview locally, run `cd wiki && npm install && npm run dev`. When adding documentation, update both the Chinese page under `guide/` (or `api/`) and its English counterpart.
