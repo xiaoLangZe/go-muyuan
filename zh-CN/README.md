@@ -131,4 +131,4 @@ go test ./...
 
 ## 许可证
 
-MIT —— 见 [LICENSE](../LICENSE)。
+Apache License 2.0 —— 见 [LICENSE](../LICENSE)。
