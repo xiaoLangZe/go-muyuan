@@ -1,21 +1,21 @@
-# 本地工具与编辑器产物
-/.mimosa/
-/.zcode/
-/.claude/
-/.cursor/
-/.aider*
-/.copilot/
-/.continue/
-/.agents/
-/CLAUDE.md
-/AGENTS.md
-/.cursorrules
-/.cursorignore
-/.aiderignore
-/.codeium/
-/.tabnine/
-/.windsurf/
-/.github/copilot/
+# 本地工具与编辑器产物（匹配任意层级，含嵌套子项目）
+.mimosa/
+.zcode/
+.claude/
+.cursor/
+.aider*
+.copilot/
+.continue/
+.agents/
+CLAUDE.md
+AGENTS.md
+.cursorrules
+.cursorignore
+.aiderignore
+.codeium/
+.tabnine/
+.windsurf/
+.github/copilot/
 
 # 下载器运行时附属文件（partial + 元数据）
 *.muyuan.partial
@@ -26,3 +26,8 @@
 /examples/*/downloaded.bin
 /examples/*/file.bin
 /examples/*/*.bin
+
+# 文档站构建产物
+/wiki/node_modules/
+/wiki/.vitepress/dist/
+/wiki/.vitepress/cache/
