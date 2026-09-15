@@ -21,11 +21,11 @@ AGENTS.md
 *.muyuan.partial
 *.muyuan.meta.json
 
-# 示例运行产物
-/examples/*/downloads/
-/examples/*/downloaded.bin
-/examples/*/file.bin
-/examples/*/*.bin
+# 示例运行产物（匹配任意层级，含 zh-CN/ 下的副本）
+**/examples/*/downloads/
+**/examples/*/downloaded.bin
+**/examples/*/file.bin
+**/examples/*/*.bin
 
 # 文档站构建产物
 /wiki/node_modules/

@@ -57,6 +57,18 @@ alias keeps it obvious:
 import downloader "github.com/xiaoLangZe/go-muyuan"
 ```
 
+### Simplified Chinese version
+
+A Simplified-Chinese variant lives in its own independent module:
+
+```bash
+go get github.com/xiaoLangZe/go-muyuan/zh-CN
+```
+
+It ships its own `internal/` packages and never imports the English module —
+and importing the English module never pulls in `zh-CN`. See
+[zh-CN/README.md](zh-CN/README.md).
+
 ## Quick start
 
 ```go
