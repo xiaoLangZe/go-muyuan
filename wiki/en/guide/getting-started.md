@@ -6,9 +6,13 @@ Requires **Go 1.26 or newer** (the `go` directive in `go.mod`). An older toolcha
 
 ## Install
 
+Requires **Go 1.26 or newer** (the `go` directive in `go.mod`). An older toolchain reports `go.mod requires go >= 1.26`.
+
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
+
+The current release is **v0.1.0**; pin it with `@v0.1.0` for a reproducible version.
 
 The Simplified-Chinese variant is a separate module — append `/zh-CN` to the path
 (see [Introduction](./introduction)):
@@ -16,6 +20,9 @@ The Simplified-Chinese variant is a separate module — append `/zh-CN` to the p
 ```bash
 go get github.com/xiaoLangZe/go-muyuan/zh-CN
 ```
+
+Because it is a nested module, its releases are tagged with a path prefix: the
+v0.1.0 release tag is `zh-CN/v0.1.0`.
 
 Then import it (the package name is `downloader`, which does not match the last element of the module path, so an alias keeps it obvious):
 

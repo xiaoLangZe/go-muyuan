@@ -39,11 +39,13 @@ changing the segment count is a metadata-only operation that moves no bytes.
 
 ## Install
 
-Requires **Go 1.26 or newer**.
+Requires **Go 1.26 or newer**. The current release is **v0.1.0**.
 
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
+
+Pin the release explicitly with `@v0.1.0` if you want a reproducible version.
 
 The package name is `downloader`, which does not match the module path, so an
 alias keeps it obvious:
@@ -73,6 +75,9 @@ go get github.com/xiaoLangZe/go-muyuan/zh-CN
 It ships its own `internal/` packages and never imports the English module —
 and importing the English module never pulls in `zh-CN`. See
 [zh-CN/README.md](zh-CN/README.md).
+
+Because it is a nested module, its releases are tagged with a path prefix: the
+v0.1.0 release tag is `zh-CN/v0.1.0`.
 
 ## Quick start
 
