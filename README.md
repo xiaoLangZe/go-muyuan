@@ -1,4 +1,4 @@
-# go-muyuan
+# go-muyuan (木鸢)
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/xiaoLangZe/go-muyuan.svg)](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue.svg)](https://go.dev/)
@@ -13,6 +13,9 @@ An high-speed downloader as a **reusable Go library**. It splits a file into
 byte-range *segments* and downloads them over a pool of *connections*, and it can
 be reconfigured, paused, resumed, restarted, and cache-cleared **while running**.
 A task queue downloads many files with bounded *concurrency*.
+
+The project's Chinese name is **木鸢** (mùyuān, "wooden kite"); the `muyuan` in the
+module path is its pinyin.
 
 This is a package meant to be imported by other programs, not a CLI tool.
 

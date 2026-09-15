@@ -2,6 +2,8 @@
 
 `go-muyuan` is an high-speed downloader shipped as a **reusable Go library** — not a CLI tool. It splits a file into byte-range *segments* and downloads them over a pool of *connections*, and it can be reconfigured, paused, resumed, restarted, and cache-cleared **while running** via control signals. A task queue downloads many files with bounded *concurrency*.
 
+The project's Chinese name is **木鸢** (mùyuān, "wooden kite"); the `muyuan` in the module path is its pinyin. This manual refers to the project as `go-muyuan` throughout.
+
 ## Core idea
 
 A naive multi-threaded downloader writes each segment to its own `.partN` file and concatenates at the end. Changing the segment count then means reading and rewriting every part.

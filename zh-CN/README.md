@@ -1,4 +1,4 @@
-# go-muyuan
+# go-muyuan（木鸢）
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/xiaoLangZe/go-muyuan/zh-CN.svg)](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan/zh-CN)
 [![Go Version](https://img.shields.io/badge/go-1.26-blue.svg)](https://go.dev/)
@@ -8,6 +8,8 @@
 📖 **[文档站](https://xiaoLangZe.github.io/go-muyuan/zh-CN/)** ·
 📦 [pkg.go.dev](https://pkg.go.dev/github.com/xiaoLangZe/go-muyuan/zh-CN) ·
 🐙 [GitHub](https://github.com/xiaoLangZe/go-muyuan)
+
+本项目中文名为 **木鸢**，模块路径里的 `muyuan` 即其拼音。
 
 一个 golang 高速下载库，以**可复用的 Go 库**形式提供。它把文件切成若干字节区间
 （*切片 / segment*），用一组*连接*并发下载；并且在**运行中**即可重配置、暂停、

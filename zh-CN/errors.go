@@ -1,6 +1,6 @@
-// Package downloader 实现了一个 golang 高速下载库：多连接、可续传、
-// 运行时可重配的文件下载器。它是一个可复用库：调用方 import
-// "github.com/xiaoLangZe/go-muyuan/zh-CN" 后，通过 [Downloader] 类型驱动一次下载。
+// Package downloader 实现「木鸢（go-muyuan）」：一个 golang 高速下载库，
+// 多连接、可续传、运行时可重配的文件下载器。它是一个可复用库：调用方
+// import "github.com/xiaoLangZe/go-muyuan/zh-CN" 后，通过 [Downloader] 类型驱动一次下载。
 //
 // 下载会将文件切分为字节范围分片，并通过一个连接池下载它们。分片数
 // （切多少块）和连接数（同时拉多少块）相互独立，并可通过类型化信号

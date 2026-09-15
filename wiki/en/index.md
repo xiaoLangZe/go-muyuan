@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: go-muyuan
+  name: go-muyuan (木鸢)
   text: High-speed Go download library
-  tagline: Multi-connection, resumable, live-reconfigurable — as a reusable library
+  tagline: 木鸢 (mùyuān, "wooden kite") — multi-connection, resumable, live-reconfigurable
   image:
     src: /logo.png
-    alt: go-muyuan
+    alt: go-muyuan 木鸢
   actions:
     - text: Quick Start
       link: /en/guide/getting-started

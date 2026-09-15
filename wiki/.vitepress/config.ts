@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'go-muyuan',
-  description: '高速 Go 下载库用户手册',
+  title: 'go-muyuan（木鸢）',
+  description: '木鸢 go-muyuan —— 高速 Go 下载库用户手册',
   base: '/go-muyuan/',
   cleanUrls: true,
   lastUpdated: true,
@@ -16,6 +16,7 @@ export default defineConfig({
     'root': {
       label: '简体中文',
       lang: 'zh-CN',
+      title: 'go-muyuan（木鸢）',
       themeConfig: {
         nav: [
           { text: '指南', link: '/guide/introduction', activeMatch: '/guide/' },
@@ -85,6 +86,7 @@ export default defineConfig({
       label: 'English',
       lang: 'en-US',
       link: '/en/',
+      title: 'go-muyuan (木鸢)',
       themeConfig: {
         nav: [
           { text: 'Guide', link: '/en/guide/introduction', activeMatch: '/en/guide/' },

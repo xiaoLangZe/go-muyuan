@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: go-muyuan
+  name: go-muyuan（木鸢）
   text: 高速 Go 下载库
   tagline: 多连接、可续传、运行时可重配的可复用下载库
   image:
     src: /logo.png
-    alt: go-muyuan
+    alt: go-muyuan 木鸢
   actions:
     - text: 快速上手
       link: /guide/getting-started

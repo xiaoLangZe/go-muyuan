@@ -1,4 +1,4 @@
-// Command batch 演示 go-muyuan 任务队列：以有界并发下载多个文件，
+// Command batch 演示木鸢（go-muyuan）任务队列：以有界并发下载多个文件，
 // 并提供实时多行状态显示，运行期间接受 stdin 命令控制队列。
 //
 // 用法：

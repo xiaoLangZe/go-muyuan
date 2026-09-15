@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains how `go-muyuan` performs a download, why the on-disk layout is what it is, and how live reconfiguration stays safe.
+This document explains how `go-muyuan` (木鸢) performs a download, why the on-disk layout is what it is, and how live reconfiguration stays safe.
 
 Terminology (see [Introduction](./introduction) for the full table): a **connection** is one HTTP transfer, a **segment** is a byte-range piece of the file, **workers** is the total budget of (connections + segments) that the library auto-allocates, and **concurrency** is how many *files* a queue downloads at once.
 
