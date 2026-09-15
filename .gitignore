@@ -1,0 +1,28 @@
+# 本地工具与编辑器产物
+/.mimosa/
+/.zcode/
+/.claude/
+/.cursor/
+/.aider*
+/.copilot/
+/.continue/
+/.agents/
+/CLAUDE.md
+/AGENTS.md
+/.cursorrules
+/.cursorignore
+/.aiderignore
+/.codeium/
+/.tabnine/
+/.windsurf/
+/.github/copilot/
+
+# 下载器运行时附属文件（partial + 元数据）
+*.muyuan.partial
+*.muyuan.meta.json
+
+# 示例运行产物
+/examples/*/downloads/
+/examples/*/downloaded.bin
+/examples/*/file.bin
+/examples/*/*.bin
