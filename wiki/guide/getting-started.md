@@ -114,3 +114,4 @@ go run ./examples/batch -allow-private -o ./downloads -c 3 -conn 8 \
 - [配置选项](./configuration)
 - [运行时控制](./runtime-control)
 - [批量队列](./queue)
+- [完整示例](./examples) —— 可直接复制运行的完整程序

@@ -38,6 +38,7 @@ export default defineConfig({
                 { text: '配置选项', link: '/guide/configuration' },
                 { text: '运行时控制', link: '/guide/runtime-control' },
                 { text: '批量队列', link: '/guide/queue' },
+                { text: '示例', link: '/guide/examples' },
                 { text: '进度报告', link: '/guide/progress' },
                 { text: '安全防护', link: '/guide/security' }
               ]
@@ -108,6 +109,7 @@ export default defineConfig({
                 { text: 'Configuration', link: '/en/guide/configuration' },
                 { text: 'Runtime Control', link: '/en/guide/runtime-control' },
                 { text: 'Batch Queue', link: '/en/guide/queue' },
+                { text: 'Examples', link: '/en/guide/examples' },
                 { text: 'Progress', link: '/en/guide/progress' },
                 { text: 'Security', link: '/en/guide/security' }
               ]

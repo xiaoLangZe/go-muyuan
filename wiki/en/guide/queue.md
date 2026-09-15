@@ -2,6 +2,10 @@
 
 `Queue` downloads many files with bounded concurrency. Its `Concurrency` limit (files at once) is a **separate dimension** from each file's own connections/segments, so "3 files at once, 8 connections each" means up to 24 concurrent connections.
 
+::: tip Complete example
+The code on this page is a fragment. For a complete, runnable batch download program see [Examples](./examples#batch-download-task-queue).
+:::
+
 ## Basic usage
 
 ```go

@@ -115,3 +115,4 @@ go run ./examples/batch -allow-private -o ./downloads -c 3 -conn 8 \
 - [Configuration](./configuration)
 - [Runtime Control](./runtime-control)
 - [Batch Queue](./queue)
+- [Examples](./examples) — complete programs you can copy and run
