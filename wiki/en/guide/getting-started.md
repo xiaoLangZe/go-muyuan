@@ -6,25 +6,31 @@ Requires **Go 1.26 or newer** (the `go` directive in `go.mod`). An older toolcha
 
 ## Install
 
-Once the repository is published to GitHub:
-
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
 
-**Until then**, `go get` fails with `remote: Repository not found` because the remote does not exist yet. To use the package from a local checkout, point a `replace` directive at the source directory instead:
+The Simplified-Chinese variant is a separate module — append `/zh-CN` to the path
+(see [Introduction](./introduction)):
 
-```text
-// go.mod of your project
-require github.com/xiaoLangZe/go-muyuan v0.0.0
-
-replace github.com/xiaoLangZe/go-muyuan => /absolute/path/to/go-muyuan
+```bash
+go get github.com/xiaoLangZe/go-muyuan/zh-CN
 ```
 
 Then import it (the package name is `downloader`, which does not match the last element of the module path, so an alias keeps it obvious):
 
 ```go
 import downloader "github.com/xiaoLangZe/go-muyuan"
+```
+
+To hack on the library itself, clone <https://github.com/xiaoLangZe/go-muyuan.git>
+and point a `replace` directive at your checkout:
+
+```text
+// go.mod of your project
+require github.com/xiaoLangZe/go-muyuan v0.0.0
+
+replace github.com/xiaoLangZe/go-muyuan => /absolute/path/to/go-muyuan
 ```
 
 ## Your first download

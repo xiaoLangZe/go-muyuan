@@ -48,24 +48,25 @@
 
 ## 安装（简体中文版）
 
-要求 **Go 1.26 或更高版本**。仓库发布后：
+要求 **Go 1.26 或更高版本**。
 
 ```bash
 go get github.com/xiaoLangZe/go-muyuan/zh-CN
-```
-
-远端尚不存在时，先用 `replace` 指向本地目录：
-
-```text
-require github.com/xiaoLangZe/go-muyuan/zh-CN v0.0.0
-
-replace github.com/xiaoLangZe/go-muyuan/zh-CN => /绝对路径/go-muyuan/zh-CN
 ```
 
 包名是 `downloader`，与模块路径最后一段不一致，所以加别名更清楚：
 
 ```go
 import downloader "github.com/xiaoLangZe/go-muyuan/zh-CN"
+```
+
+要改库本身，可克隆 <https://github.com/xiaoLangZe/go-muyuan.git> 并用
+`replace` 指向本地目录：
+
+```text
+require github.com/xiaoLangZe/go-muyuan/zh-CN v0.0.0
+
+replace github.com/xiaoLangZe/go-muyuan/zh-CN => /绝对路径/go-muyuan/zh-CN
 ```
 
 要改用英文版，把上面所有路径末尾的 `/zh-CN` 去掉即可。

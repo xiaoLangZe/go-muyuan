@@ -39,18 +39,10 @@ changing the segment count is a metadata-only operation that moves no bytes.
 
 ## Install
 
-Requires **Go 1.26 or newer**. Once published:
+Requires **Go 1.26 or newer**.
 
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
-```
-
-Until the remote exists, point a `replace` directive at a local checkout:
-
-```text
-require github.com/xiaoLangZe/go-muyuan v0.0.0
-
-replace github.com/xiaoLangZe/go-muyuan => /absolute/path/to/go-muyuan
 ```
 
 The package name is `downloader`, which does not match the module path, so an
@@ -58,6 +50,16 @@ alias keeps it obvious:
 
 ```go
 import downloader "github.com/xiaoLangZe/go-muyuan"
+```
+
+To hack on the library itself, clone
+<https://github.com/xiaoLangZe/go-muyuan.git> and point a `replace` directive at
+your checkout:
+
+```text
+require github.com/xiaoLangZe/go-muyuan v0.0.0
+
+replace github.com/xiaoLangZe/go-muyuan => /absolute/path/to/go-muyuan
 ```
 
 ### Simplified Chinese version

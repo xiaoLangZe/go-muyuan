@@ -6,25 +6,29 @@
 
 ## 安装
 
-仓库发布到 GitHub 之后：
-
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
 
-**目前**它会因为远端尚不存在而失败，报错为 `remote: Repository not found`。想从本地目录使用，请改用 `replace` 指令指向源码目录：
+简体中文版是另一个独立模块，把路径末尾加上 `/zh-CN` 即可（详见[简介](./introduction)）：
 
-```text
-// 你项目的 go.mod
-require github.com/xiaoLangZe/go-muyuan v0.0.0
-
-replace github.com/xiaoLangZe/go-muyuan => /绝对路径/go-muyuan
+```bash
+go get github.com/xiaoLangZe/go-muyuan/zh-CN
 ```
 
 然后导入（包名是 `downloader`，与模块路径最后一段不一致，所以加个别名更清楚）：
 
 ```go
 import downloader "github.com/xiaoLangZe/go-muyuan"
+```
+
+要改库本身，可克隆 <https://github.com/xiaoLangZe/go-muyuan.git> 并用 `replace` 指向本地目录：
+
+```text
+// 你项目的 go.mod
+require github.com/xiaoLangZe/go-muyuan v0.0.0
+
+replace github.com/xiaoLangZe/go-muyuan => /绝对路径/go-muyuan
 ```
 
 ## 第一个下载
