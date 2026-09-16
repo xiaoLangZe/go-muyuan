@@ -1,0 +1,8 @@
+{
+  // wiki markdown 配置：中文文档行宽无意义，代码块允许 tab 缩进。
+  "config": {
+    "default": true,
+    "MD010": { "code_blocks": false },
+    "MD013": false
+  }
+}

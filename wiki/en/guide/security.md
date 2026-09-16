@@ -32,9 +32,9 @@ d, _ := downloader.New(downloader.Config{
 
 ## Proxy
 
-`Config.Proxy` accepts the schemes `http`, `https`, `socks5`, and `socks5h`; any other scheme returns `errBadProxyScheme`. `socks5h` means names are resolved at the proxy.
+`Config.Proxy` accepts the schemes `http`, `https`, `socks5`, and `socks5h`; any other scheme returns `errBadProxyScheme`. `socks5h` means names are resolved at the proxy. Validation uses dedicated logic: the host is not forced public (proxies commonly sit on private addresses), while the scheme whitelist differs from that of HTTP endpoints.
 
-The proxy URL itself is validated with `allowPrivate=true`, since proxies commonly sit on a private address. Even when a proxy is used, `GuardedDial` stays wired into the transport, so the SSRF guard still applies.
+Even when a proxy is used, `GuardedDial` stays wired into the transport, so the SSRF guard still applies.
 
 Setting `HTTPClient` makes `Proxy` be ignored — a custom client is the caller's own security responsibility.
 

@@ -12,7 +12,7 @@ Requires **Go 1.26 or newer** (the `go` directive in `go.mod`). An older toolcha
 go get github.com/xiaoLangZe/go-muyuan
 ```
 
-The current release is **v0.1.0**; pin it with `@v0.1.0` for a reproducible version.
+The current release is **v0.2.0**; pin it with `@v0.2.0` for a reproducible version.
 
 Then import it (the package name is `downloader`, which does not match the last element of the module path, so an alias keeps it obvious):
 

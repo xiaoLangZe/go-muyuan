@@ -1,6 +1,6 @@
 # 示例
 
-本页的示例都是**完整可运行的程序**（含 `package main` 与全部 import），已对照发布版本 v0.1.0 编译验证。直接复制到文件里即可 `go run`。
+本页的示例都是**完整可运行的程序**（含 `package main` 与全部 import），已对照发布版本 v0.2.0 编译验证。直接复制到文件里即可 `go run`。
 
 ## 单文件下载
 
@@ -148,10 +148,30 @@ go run ./examples/batch -allow-private -o ./downloads -c 3 -conn 8 \
     http://127.0.0.1:18080/a.bin http://127.0.0.1:18080/b.bin
 ```
 
+## 更多用法：限速、校验和与跨进程续传
+
+```bash
+# 限速下载（该文件全部连接合计 256 KiB/s）
+go run ./examples/basic -allow-private -max-rate 262144 -o ./slow.bin \
+    http://127.0.0.1:18080/file.bin
+
+# 带校验和下载（不匹配时产物会被删除并以错误退出）
+sha256sum testdata/file.bin   # 先取得期望摘要
+go run ./examples/basic -allow-private -sha256 <64位hex> -o ./v.bin \
+    http://127.0.0.1:18080/file.bin
+
+# 跨进程续传：第一条命令下载 3 秒后停止，第二条继续到完成
+go run ./examples/resume -allow-private -o ./r.bin -stop-after 3s \
+    http://127.0.0.1:18080/file.bin
+go run ./examples/resume -allow-private -o ./r.bin \
+    http://127.0.0.1:18080/file.bin
+```
+
 ## 仓库中的交互式示例
 
 上面两段是为文档准备的最小程序；仓库里的示例是带实时状态面板的交互式 CLI，运行中可从 stdin 输入命令：
 
-- [`examples/basic`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/basic) —— 单文件下载，实时进度条，命令：`p`（暂停）/`r`（继续）/`conn <n>`/`seg <n>`/`workers <n>`/`restart`/`clear`/`q`。
-- [`examples/batch`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/batch) —— 任务队列批量下载，多行状态面板，另有 `pause`/`resume`/`restart`/`cancel <id>` 等单任务命令。
+- [`examples/basic`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/basic) —— 单文件下载，实时进度条，命令：`p`（暂停）/`r`（继续）/`conn <n>`/`seg <n>`/`workers <n>`/`restart`/`clear`/`q`；另有 `-proxy`、`-headers`、`-max-rate`、`-sha256` 参数。
+- [`examples/batch`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/batch) —— 任务队列批量下载，多行状态面板，另有 `pause`/`resume`/`restart`/`cancel <id>` 等单任务命令；同批支持 `-proxy`、`-headers`、`-max-rate`、`-sha256`。
+- [`examples/resume`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/resume) —— 跨进程续传演示：`-stop-after` 中途停止，下次直接续传。
 - [`examples/testsrv`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/testsrv) —— 本地支持 Range 的文件服务器，用于端到端试跑。

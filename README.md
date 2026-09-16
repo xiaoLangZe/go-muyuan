@@ -39,13 +39,13 @@ changing the segment count is a metadata-only operation that moves no bytes.
 
 ## Install
 
-Requires **Go 1.26 or newer**. The current release is **v0.1.0**.
+Requires **Go 1.26 or newer**. The current release is **v0.2.0**.
 
 ```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
 
-Pin the release explicitly with `@v0.1.0` if you want a reproducible version.
+Pin the release explicitly with `@v0.2.0` if you want a reproducible version.
 
 The package name is `downloader`, which does not match the module path, so an
 alias keeps it obvious:

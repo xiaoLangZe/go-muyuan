@@ -23,6 +23,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -40,16 +41,26 @@ func main() {
 		connections = flag.Int("conn", 8, "concurrent connections fetching this file (ignored when -workers>0)")
 		segments    = flag.Int("seg", 0, "byte-range segments to split the file into (0 = auto; ignored when -workers>0)")
 		allow       = flag.Bool("allow-private", false, "allow private/loopback hosts (LAN downloads)")
+		proxy       = flag.String("proxy", "", "proxy URL (http/https/socks5/socks5h)")
+		headers     = flag.String("headers", "", `extra request headers, comma-separated "K: V" pairs, e.g. "Authorization: Bearer t"`)
+		maxRate     = flag.Int64("max-rate", 0, "total download rate cap in bytes/sec (0 = unlimited)")
+		sha256sum   = flag.String("sha256", "", "expected SHA-256 (64 hex chars); verified on completion")
 	)
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: basic [-o out] [-workers n | -conn n -seg n] <url>")
+		fmt.Fprintln(os.Stderr, "usage: basic [-o out] [-workers n | -conn n -seg n] [-proxy u] [-headers k:v] [-max-rate n] [-sha256 sum] <url>")
 		os.Exit(2)
 	}
 	url := flag.Arg(0)
 	if *out == "" {
 		*out = "downloaded.bin"
+	}
+
+	hdr, err := parseHeaders(*headers)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "headers error:", err)
+		os.Exit(2)
 	}
 
 	// ctx 在 Ctrl-C 时被取消，从而中止下载。
@@ -63,6 +74,10 @@ func main() {
 		Connections:      *connections,
 		Segments:         *segments,
 		AllowPrivateHost: *allow,
+		Proxy:            *proxy,
+		Headers:          hdr,
+		MaxBytesPerSec:   *maxRate,
+		VerifySHA256:     *sha256sum,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config error:", err)
@@ -224,4 +239,24 @@ func atoiArg(fields []string, i int) (int, error) {
 		return 0, fmt.Errorf("missing argument")
 	}
 	return strconv.Atoi(fields[i])
+}
+
+// parseHeaders 解析逗号分隔的 "K: V" 请求头对。
+func parseHeaders(raw string) (http.Header, error) {
+	h := make(http.Header)
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	for _, pair := range strings.Split(raw, ",") {
+		k, v, ok := strings.Cut(pair, ":")
+		if !ok {
+			return nil, fmt.Errorf("header %q not in \"K: V\" form", pair)
+		}
+		k = strings.TrimSpace(k)
+		if k == "" {
+			return nil, fmt.Errorf("empty header name in %q", pair)
+		}
+		h.Add(k, strings.TrimSpace(v))
+	}
+	return h, nil
 }

@@ -46,7 +46,9 @@ export default defineConfig({
             {
               text: '设计',
               items: [
-                { text: '架构设计', link: '/guide/architecture' }
+                { text: '架构设计', link: '/guide/architecture' },
+                { text: '性能基准', link: '/guide/benchmark' },
+                { text: '常见问题', link: '/guide/troubleshooting' }
               ]
             }
           ],
@@ -117,7 +119,9 @@ export default defineConfig({
             {
               text: 'Design',
               items: [
-                { text: 'Architecture', link: '/en/guide/architecture' }
+                { text: 'Architecture', link: '/en/guide/architecture' },
+                { text: 'Benchmarks', link: '/en/guide/benchmark' },
+                { text: 'Troubleshooting', link: '/en/guide/troubleshooting' }
               ]
             }
           ],

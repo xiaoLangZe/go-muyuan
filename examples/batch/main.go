@@ -25,6 +25,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sort"
@@ -46,12 +47,22 @@ func main() {
 		segments    = flag.Int("seg", 0, "byte-range segments per file (0 = auto; ignored when -workers>0)")
 		retries     = flag.Int("retries", 2, "retries per failed task")
 		allow       = flag.Bool("allow-private", false, "allow private/loopback hosts")
+		proxy       = flag.String("proxy", "", "proxy URL (http/https/socks5/socks5h)")
+		headers     = flag.String("headers", "", `extra request headers, comma-separated "K: V" pairs`)
+		maxRate     = flag.Int64("max-rate", 0, "per-file total download rate cap in bytes/sec (0 = unlimited)")
+		sha256sum   = flag.String("sha256", "", "expected SHA-256 for every file (64 hex chars); empty = skip")
 	)
 	flag.Parse()
 
 	urls := flag.Args()
 	if len(urls) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: batch [-o dir] [-c n] [-workers n | -conn n -seg n] [-retries n] <url> [url...]")
+		fmt.Fprintln(os.Stderr, "usage: batch [-o dir] [-c n] [-workers n | -conn n -seg n] [-retries n] [-proxy u] [-headers k:v] [-max-rate n] [-sha256 sum] <url> [url...]")
+		os.Exit(2)
+	}
+
+	hdr, err := parseHeaders(*headers)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "headers error:", err)
 		os.Exit(2)
 	}
 
@@ -67,6 +78,10 @@ func main() {
 			Connections:      *connections,
 			Segments:         *segments,
 			AllowPrivateHost: *allow,
+			Proxy:            *proxy,
+			Headers:          hdr,
+			MaxBytesPerSec:   *maxRate,
+			VerifySHA256:     *sha256sum,
 		},
 		OnTaskStateChange: func(ti downloader.TaskInfo) {
 			// 在活动区块上方打印状态变更，随后让它重绘。
@@ -302,4 +317,24 @@ func atoiArg(fields []string, i int) (int, error) {
 		return 0, fmt.Errorf("missing argument")
 	}
 	return strconv.Atoi(fields[i])
+}
+
+// parseHeaders 解析逗号分隔的 "K: V" 请求头对。
+func parseHeaders(raw string) (http.Header, error) {
+	h := make(http.Header)
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	for _, pair := range strings.Split(raw, ",") {
+		k, v, ok := strings.Cut(pair, ":")
+		if !ok {
+			return nil, fmt.Errorf("header %q not in \"K: V\" form", pair)
+		}
+		k = strings.TrimSpace(k)
+		if k == "" {
+			return nil, fmt.Errorf("empty header name in %q", pair)
+		}
+		h.Add(k, strings.TrimSpace(v))
+	}
+	return h, nil
 }

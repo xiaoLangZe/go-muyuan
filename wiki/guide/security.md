@@ -32,9 +32,9 @@ d, _ := downloader.New(downloader.Config{
 
 ## 代理
 
-`Config.Proxy` 支持 `http`、`https`、`socks5`、`socks5h` 四种 scheme，其他 scheme 返回 `errBadProxyScheme`。`socks5h` 表示域名由代理解析。
+`Config.Proxy` 支持 `http`、`https`、`socks5`、`socks5h` 四种 scheme，其他 scheme 返回 `errBadProxyScheme`。`socks5h` 表示域名由代理解析。校验由专用逻辑执行：主机不做公网强制（代理常位于内网），scheme 白名单与 HTTP 端点不同。
 
-代理 URL 本身以 `allowPrivate=true` 校验（代理常位于内网）。即使走了代理，`GuardedDial` 仍然挂在 transport 上，所以 SSRF 防护依然生效。
+即使走了代理，`GuardedDial` 仍然挂在 transport 上，所以 SSRF 防护依然生效。
 
 设置了 `HTTPClient` 时 `Proxy` 被忽略——自定义客户端由调用方自己负责安全策略。
 

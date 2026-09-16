@@ -1,6 +1,6 @@
 # Examples
 
-Every example on this page is a **complete, runnable program** (with `package main` and all imports), compile-verified against the published v0.1.0. Copy it into a file and `go run` it.
+Every example on this page is a **complete, runnable program** (with `package main` and all imports), compile-verified against the published v0.2.0. Copy it into a file and `go run` it.
 
 ## Single file download
 
@@ -151,12 +151,32 @@ go run ./examples/batch -allow-private -o ./downloads -c 3 -conn 8 \
     http://127.0.0.1:18080/a.bin http://127.0.0.1:18080/b.bin
 ```
 
+## More usage: rate limit, checksum, cross-process resume
+
+```bash
+# Rate-limited download (all of the file's connections combined, 256 KiB/s)
+go run ./examples/basic -allow-private -max-rate 262144 -o ./slow.bin \
+    http://127.0.0.1:18080/file.bin
+
+# Verified download (on mismatch the output is deleted and the exit is an error)
+sha256sum testdata/file.bin   # obtain the expected digest first
+go run ./examples/basic -allow-private -sha256 <64-hex> -o ./v.bin \
+    http://127.0.0.1:18080/file.bin
+
+# Cross-process resume: the first command stops after 3s, the second finishes
+go run ./examples/resume -allow-private -o ./r.bin -stop-after 3s \
+    http://127.0.0.1:18080/file.bin
+go run ./examples/resume -allow-private -o ./r.bin \
+    http://127.0.0.1:18080/file.bin
+```
+
 ## Interactive examples in the repository
 
 The two programs above are minimal, documentation-oriented versions. The examples
 in the repository are interactive CLIs with live status displays that accept
 commands on stdin while running:
 
-- [`examples/basic`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/basic) — single-file download with a live progress bar; commands `p` (pause) / `r` (resume) / `conn <n>` / `seg <n>` / `workers <n>` / `restart` / `clear` / `q`.
-- [`examples/batch`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/batch) — batch download via the task queue, with a multi-line status panel and per-task commands such as `pause` / `resume` / `restart` / `cancel <id>`.
+- [`examples/basic`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/basic) — single-file download with a live progress bar; commands `p` (pause) / `r` (resume) / `conn <n>` / `seg <n>` / `workers <n>` / `restart` / `clear` / `q`; also supports `-proxy`, `-headers`, `-max-rate`, `-sha256`.
+- [`examples/batch`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/batch) — batch download via the task queue, with a multi-line status panel and per-task commands such as `pause` / `resume` / `restart` / `cancel <id>`; same `-proxy` / `-headers` / `-max-rate` / `-sha256` options apply to every file.
+- [`examples/resume`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/resume) — cross-process resume demo: `-stop-after` stops mid-flight, the next run resumes.
 - [`examples/testsrv`](https://github.com/xiaoLangZe/go-muyuan/tree/main/examples/testsrv) — a local Range-capable file server for end-to-end trials.
