@@ -100,7 +100,8 @@ func Probe(ctx context.Context, c *http.Client, url string, hdr http.Header) (Pr
 		return res, fmt.Errorf("probe: %w", err)
 	}
 	defer gresp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(gresp.Body, 64))
+	// 探测响应最多读 64 字节即弃，读取失败不影响探测结论。
+	_, _ = io.Copy(io.Discard, io.LimitReader(gresp.Body, 64)) //nolint:errcheck
 
 	switch gresp.StatusCode {
 	case http.StatusPartialContent:

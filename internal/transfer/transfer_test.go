@@ -210,7 +210,7 @@ func TestProbeContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := Probe(ctx, srv.Client(), srv.URL, nil); err == nil {
-		t.Fatal("Probe with cancelled ctx = nil error")
+		t.Fatal("Probe with canceled ctx = nil error")
 	}
 }
 
@@ -532,7 +532,7 @@ func TestRetrySegmentCancelNoWait(t *testing.T) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
 	if time.Since(start) > 100*time.Millisecond {
-		t.Error("pre-cancelled ctx waited")
+		t.Error("pre-canceled ctx waited")
 	}
 }
 

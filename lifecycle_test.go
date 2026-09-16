@@ -28,11 +28,6 @@ type mutServer struct {
 	delay   time.Duration
 }
 
-func newMutServer(t *testing.T, data []byte) *mutServer {
-	t.Helper()
-	return newMutServerDelay(t, data, 0)
-}
-
 func newMutServerDelay(t *testing.T, data []byte, delay time.Duration) *mutServer {
 	t.Helper()
 	m := &mutServer{data: data, delay: delay, lastMod: "Wed, 21 Oct 2026 07:28:00 GMT"}

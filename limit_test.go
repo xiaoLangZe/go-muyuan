@@ -72,7 +72,7 @@ func TestThrottleWriterWaits(t *testing.T) {
 	}
 	// 再写 128 KiB：按速率需约 1s。
 	start := time.Now()
-	if _, err := tw.WriteAt(make([]byte, rate), int64(rate)); err != nil {
+	if _, err := tw.WriteAt(make([]byte, rate), rate); err != nil {
 		t.Fatalf("WriteAt: %v", err)
 	}
 	elapsed := time.Since(start)

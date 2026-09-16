@@ -118,15 +118,30 @@ func (m *manager) init(ctx context.Context) error {
 		existing = nil
 	}
 
+	// meta 存在但 partial 文件缺失（例如上次完成的清理失败、或
+	// 文件被外部删除）：用旧 meta 续传会污染新文件，必须丢弃。
+	if existing != nil {
+		if _, statErr := os.Stat(meta.PartialPath(m.out)); statErr != nil {
+			if err := meta.DeleteAndPartial(m.out); err != nil {
+				return fmt.Errorf("discard stale meta: %w", err)
+			}
+			existing = nil
+		}
+	}
+
 	// 不支持 range 的服务器无法续传；丢弃陈旧进度。
 	if !m.acceptRanges && existing != nil {
-		_ = meta.DeleteAndPartial(m.out)
+		if err := meta.DeleteAndPartial(m.out); err != nil {
+			return fmt.Errorf("discard stale meta: %w", err)
+		}
 		existing = nil
 	}
 
 	// 远端资源变更时拒绝续传。
 	if existing != nil && !m.resumeCompatible(existing) {
-		_ = meta.DeleteAndPartial(m.out)
+		if err := meta.DeleteAndPartial(m.out); err != nil {
+			return fmt.Errorf("discard stale meta: %w", err)
+		}
 		existing = nil
 	}
 
@@ -206,8 +221,10 @@ func (m *manager) run() {
 	defer close(m.done)
 	defer func() {
 		if m.partial != nil {
-			_ = m.partial.Sync()
-			_ = m.partial.Close()
+			// 退出路径无法向上报错：尽力落盘与关闭。失败由下一轮
+			// init 的 stale-meta 守卫兜底。
+			_ = m.partial.Sync()  //nolint:errcheck
+			_ = m.partial.Close() //nolint:errcheck
 			m.partial = nil
 		}
 	}()
@@ -348,7 +365,9 @@ func (m *manager) complete() {
 			return
 		}
 		if !matched {
-			_ = meta.DeleteAndPartial(m.out)
+			// 失败路径尽力清理；删除失败留下的 meta 由下一轮 init
+			// 的 stale-meta 守卫丢弃。
+			_ = meta.DeleteAndPartial(m.out) //nolint:errcheck
 			m.finish(StateFailed, fmt.Errorf("%w: want %s, got %s",
 				ErrChecksumMismatch, m.cfg.VerifySHA256, got))
 			m.exit = true
@@ -360,7 +379,9 @@ func (m *manager) complete() {
 		m.exit = true
 		return
 	}
-	_ = os.Remove(meta.MetaPath(m.out))
+	// 最终 rename 已完成；meta 残留由下一轮 init 的 stale-meta
+	// 守卫丢弃，删除失败不构成下载失败。
+	_ = os.Remove(meta.MetaPath(m.out)) //nolint:errcheck
 	m.mu.Lock()
 	m.state = StateCompleted
 	m.downloaded = m.total
@@ -606,7 +627,8 @@ func (m *manager) applyRestart() {
 			}
 		}
 	}
-	_ = os.Remove(meta.MetaPath(m.out))
+	// 删除失败无害：随后的 saveMeta(true) 会以新 plan 覆盖。
+	_ = os.Remove(meta.MetaPath(m.out)) //nolint:errcheck
 
 	segments := m.cfg.Segments
 	if segments == 0 {
