@@ -135,7 +135,8 @@ func main() {
 用仓库自带的本地文件服务器起一个支持 Range 的源，无需外网：
 
 ```bash
-# 终端 1：在本地提供某个目录（需要一个测试文件，例如 dd 生成）
+# 终端 1：创建测试文件并本地起服务
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # 终端 2：从它下载（回环地址需要 allow-private）

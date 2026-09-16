@@ -109,7 +109,8 @@ security, and the internal architecture.
 - [`examples/testsrv`](examples/testsrv/main.go) — a local Range-capable file server for end-to-end testing.
 
 ```bash
-# Terminal 1
+# Terminal 1: create a test file, then serve it locally
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # Terminal 2 (allow-private is required for loopback)

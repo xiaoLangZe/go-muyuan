@@ -104,7 +104,8 @@ if err := d.Wait(); err != nil {
 - [`examples/testsrv`](../examples/testsrv/main.go) —— 本地支持 Range 的文件服务器。
 
 ```bash
-# 终端 1
+# 终端 1：先创建测试文件，再本地起服务
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # 终端 2（回环地址需要 allow-private）

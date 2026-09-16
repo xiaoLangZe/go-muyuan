@@ -94,7 +94,8 @@ For an output path `P`:
 Serve a Range-capable source locally:
 
 ```bash
-# Terminal 1: serve a directory locally
+# Terminal 1: create a test file, then serve it locally
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # Terminal 2: download from it (allow-private is required for loopback)

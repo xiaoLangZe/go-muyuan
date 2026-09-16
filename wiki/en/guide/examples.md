@@ -138,7 +138,8 @@ non-nil whenever any task failed, so partial failures cannot pass silently.
 Serve a Range-capable source locally with the bundled file server — no internet needed:
 
 ```bash
-# Terminal 1: serve a local directory (put a test file in it first)
+# Terminal 1: create a test file, then serve it locally
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # Terminal 2: download from it (allow-private is required for loopback)

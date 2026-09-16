@@ -31,3 +31,6 @@ AGENTS.md
 /wiki/node_modules/
 /wiki/.vitepress/dist/
 /wiki/.vitepress/cache/
+
+# 端到端测试用的本地载荷目录（运行示例时自行创建）
+/testdata/

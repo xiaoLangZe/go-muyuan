@@ -93,7 +93,8 @@ func main() {
 仓库自带三个示例。先用本地文件服务器起一个支持 Range 的源：
 
 ```bash
-# 终端 1：在本地提供某个目录
+# 终端 1：先创建测试文件，再本地起服务
+mkdir -p testdata && dd if=/dev/zero of=testdata/file.bin bs=1M count=50
 go run ./examples/testsrv -dir ./testdata -addr 127.0.0.1:18080
 
 # 终端 2：从它下载（回环地址需要 allow-private）
