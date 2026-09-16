@@ -60,6 +60,7 @@ type QueueSignal struct {
 	Workers     int
 }
 
+// String 返回队列信号的人类可读描述，用于日志与调试。
 func (s QueueSignal) String() string {
 	switch s.Type {
 	case QSigPause:
@@ -96,7 +97,7 @@ type QueueConfig struct {
 
 	// Template 提供每个任务继承的每文件默认值。其 URL 和
 	// OutputPath 被忽略；Connections、Segments、Headers、
-	// HTTPClient、Proxy、PartDir、MinSegmentBytes、AllowPrivateHost
+	// HTTPClient、Proxy、PartDir、MinSegmentSize、AllowPrivateHost
 	// 被继承。其 OnProgress 被忽略——请用 OnTaskProgress。
 	Template Config
 
@@ -576,11 +577,17 @@ func (q *Queue) controlTask(id string, ctl taskCtl) error {
 
 	// 删除运行中任务的输出必须等其 downloader 释放文件后；
 	// 由 runner 在其停止时执行该清除。
+	var wipeErr error
 	for _, p := range wipeNow {
 		if stopNow {
-			continue
+			break
 		}
-		_ = meta.DeleteAndPartial(p)
+		if err := meta.DeleteAndPartial(p); err != nil && wipeErr == nil {
+			wipeErr = fmt.Errorf("delete sidecars of %q: %w", p, err)
+		}
+	}
+	if wipeErr != nil {
+		return wipeErr
 	}
 	switch {
 	case dl != nil && abortNow:
@@ -838,7 +845,7 @@ func (q *Queue) taskFinished(t *task, err error) {
 	q.mu.Lock()
 	q.running--
 
-	var wipeOutput bool
+	var wipeOutput, wipeCache bool
 	switch {
 	case t.cancelReq:
 		t.state = TaskCanceled
@@ -846,8 +853,10 @@ func (q *Queue) taskFinished(t *task, err error) {
 
 	case t.restartReq:
 		wipeOutput = t.restartDeleteOutput
+		wipeCache = t.restartWipeCache
 		t.restartReq = false
 		t.restartDeleteOutput = false
+		t.restartWipeCache = false
 		t.suspendReq = false
 		t.userPaused = false
 		t.attempts = 0
@@ -883,12 +892,43 @@ func (q *Queue) taskFinished(t *task, err error) {
 	q.mu.Unlock()
 
 	if wipeOutput && t.resolved != "" {
-		_ = os.Remove(t.resolved)
-		_ = meta.DeleteAndPartial(t.resolved)
+		if err := removeOutputAndSidecars(t.resolved); err != nil {
+			q.failRestartedTask(t, err)
+		}
+	} else if wipeCache && t.resolved != "" {
+		if err := meta.DeleteAndPartial(t.resolved); err != nil {
+			q.failRestartedTask(t, err)
+		}
 	}
 
 	q.notifyState(t)
 	q.wake()
+}
+
+// removeOutputAndSidecars 删除任务的最终输出与两个附属文件。
+// 输出不存在不算错误（例如从未完成的任务）。
+func removeOutputAndSidecars(p string) error {
+	if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove output: %w", err)
+	}
+	if err := meta.DeleteAndPartial(p); err != nil {
+		return fmt.Errorf("delete sidecars: %w", err)
+	}
+	return nil
+}
+
+// failRestartedTask 在重启清理失败时把仍处于待启动的任务判为失败，
+// 而不是让其带着陈旧进度重下。清理失败意味着旧 meta 可能残留，
+// 静默继续会违反"从头重下"的语义。
+func (q *Queue) failRestartedTask(t *task, err error) {
+	q.mu.Lock()
+	if t.state == TaskPending && !t.cancelReq {
+		t.restartReq = false
+		t.suspendReq = false
+		t.state = TaskFailed
+		t.err = err
+	}
+	q.mu.Unlock()
 }
 
 // handleSignal 分发一个队列控制信号。
@@ -1002,32 +1042,40 @@ func (q *Queue) setWorkers(n int) {
 // 重置以重新下载；终态任务保持其状态、仅清理残留文件。
 func (q *Queue) clearAllCache() {
 	q.mu.Lock()
-	var wipeNow []string
+	var wipeNow []*task
 	var stop []*Downloader
 	for _, t := range q.tasks {
 		switch {
 		case t.state == TaskRunning:
 			t.restartReq = true
 			t.restartDeleteOutput = false
+			// 队列级 ClearCache 语义：附属文件由 runner 在任务
+			// 停止后删除，使重启从头下载。
+			t.restartWipeCache = true
 			t.suspendReq = true
 			if t.dl != nil {
 				stop = append(stop, t.dl)
 			}
 		case t.state.IsTerminal():
 			if t.resolved != "" {
-				wipeNow = append(wipeNow, t.resolved)
+				wipeNow = append(wipeNow, t)
 			}
 		default:
 			t.attempts = 0
 			if t.resolved != "" {
-				wipeNow = append(wipeNow, t.resolved)
+				wipeNow = append(wipeNow, t)
 			}
 		}
 	}
 	q.mu.Unlock()
 
-	for _, p := range wipeNow {
-		_ = meta.DeleteAndPartial(p)
+	for _, t := range wipeNow {
+		if err := meta.DeleteAndPartial(t.resolved); err != nil {
+			// 删除失败对该任务可见；状态保持，错误经 Task().Err 暴露。
+			q.mu.Lock()
+			t.err = fmt.Errorf("clear cache: %w", err)
+			q.mu.Unlock()
+		}
 	}
 	for _, dl := range stop {
 		dl.Stop()

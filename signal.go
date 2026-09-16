@@ -56,6 +56,7 @@ type SignalEvent struct {
 	Workers     int
 }
 
+// String 返回信号的人类可读描述，用于日志与调试。
 func (s SignalEvent) String() string {
 	switch s.Type {
 	case SigPause:
@@ -101,6 +102,7 @@ const (
 	StateStopped
 )
 
+// String 返回状态的小写英文名，用于日志与进度显示。
 func (s State) String() string {
 	switch s {
 	case StateIdle:

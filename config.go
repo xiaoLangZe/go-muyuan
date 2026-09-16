@@ -161,8 +161,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
 	if c.Proxy != "" {
-		if err := security.ValidateURL(c.Proxy, true); // 代理可以是私有地址
-		err != nil {
+		if err := security.ValidateProxyURL(c.Proxy); err != nil {
 			return fmt.Errorf("%w: invalid proxy: %v", ErrInvalidConfig, err)
 		}
 	}

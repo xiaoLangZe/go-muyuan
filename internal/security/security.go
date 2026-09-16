@@ -47,6 +47,24 @@ func ValidateURLQuick(raw string, allowPrivate bool) error {
 	return nil
 }
 
+// ValidateProxyURL 校验可选的代理 URL。scheme 仅允许 http、https、
+// socks5 与 socks5h；主机不做公网强制，因为代理常位于内网。
+func ValidateProxyURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("parse proxy url: %w", err)
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https", "socks5", "socks5h":
+	default:
+		return fmt.Errorf("scheme %q not allowed for proxy (http/https/socks5/socks5h)", u.Scheme)
+	}
+	if u.Hostname() == "" {
+		return fmt.Errorf("empty proxy host")
+	}
+	return nil
+}
+
 // ValidateURL 强制本包的 SSRF 防护：
 //   - scheme 必须是 http 或 https；
 //   - 主机会被解析，若是 localhost、loopback、私有（RFC1918）、
@@ -95,6 +113,12 @@ func checkHostPublic(host string) error {
 	return nil
 }
 
+// lookupIP 解析主机名。它是包变量以便测试注入假解析结果，
+// 产品代码不修改它。
+var lookupIP = func(ctx context.Context, host string) ([]net.IPAddr, error) {
+	return net.DefaultResolver.LookupIPAddr(ctx, host)
+}
+
 // GuardedDial 返回一个在连接时再次校验 *已解析* 地址的 DialContext。
 // 这是权威的 SSRF 强制点：它捕获 DNS 重绑定（一个在验证时解析为
 // 公网、实际拨号时指向私网的名字）以及对内网目标的跳转。
@@ -109,7 +133,7 @@ func GuardedDial(allowPrivate bool, dialer *net.Dialer) func(ctx context.Context
 		if err != nil {
 			return nil, err
 		}
-		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		ips, err := lookupIP(ctx, host)
 		if err != nil {
 			return nil, err
 		}

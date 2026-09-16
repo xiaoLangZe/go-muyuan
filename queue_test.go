@@ -836,6 +836,9 @@ func TestQueueCallbacks(t *testing.T) {
 	if atomic.LoadInt64(&states) == 0 {
 		t.Error("OnTaskStateChange never fired")
 	}
+	if atomic.LoadInt64(&progress) == 0 {
+		t.Error("OnTaskProgress never fired")
+	}
 	if atomic.LoadInt64(&done) != 1 {
 		t.Errorf("OnQueueDone fired %d times, want 1", atomic.LoadInt64(&done))
 	}

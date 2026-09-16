@@ -25,6 +25,7 @@ const (
 	TaskCanceled
 )
 
+// String 返回任务状态的小写英文名，用于日志与状态显示。
 func (s TaskState) String() string {
 	switch s {
 	case TaskPending:
@@ -125,6 +126,7 @@ type TaskError struct {
 	Err error
 }
 
+// Error 以"task ID (URL): 原因"的格式描述失败任务。
 func (e *TaskError) Error() string {
 	return fmt.Sprintf("task %s (%s): %v", e.ID, e.URL, e.Err)
 }
@@ -154,6 +156,9 @@ type task struct {
 	// restartDeleteOutput 在重启时额外删除此前下载的输出文件
 	// （由 RestartTask 设置，ClearTaskCache 不设）。
 	restartDeleteOutput bool
+	// restartWipeCache 在重启时删除 partial 与元数据、重新从头下载
+	// （由队列级 ClearCache 设置，区别于 RestartTask 的删输出语义）。
+	restartWipeCache bool
 
 	retryAt time.Time // 此时间之前不要启动（重试退避）
 }

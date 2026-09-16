@@ -67,7 +67,10 @@ func Probe(ctx context.Context, c *http.Client, url string, hdr http.Header) (Pr
 		_ = resp.Body.Close()
 		// HEAD 返回非成功状态（如 405）时不信任其头，交给 GET 探测。
 		if resp.StatusCode < 400 {
-			res.Total = resp.ContentLength
+			// ContentLength 未知时为 -1；与"未知为 0"的语义统一。
+			if resp.ContentLength > 0 {
+				res.Total = resp.ContentLength
+			}
 			res.ETag = resp.Header.Get("ETag")
 			res.LastModified = resp.Header.Get("Last-Modified")
 			if resp.Header.Get("Accept-Ranges") == "bytes" {
@@ -274,6 +277,9 @@ func DownloadSequential(
 			if werr != nil {
 				return fmt.Errorf("writeat: %w", werr)
 			}
+			if written != n {
+				return fmt.Errorf("short write: %d != %d", written, n)
+			}
 			offset += int64(written)
 			if onBytes != nil {
 				onBytes(int64(written))
@@ -288,6 +294,10 @@ func DownloadSequential(
 	}
 }
 
+// retryBackoffBase 是 RetrySegment 首次重试前的等待时间，之后每次
+// 翻倍。它是包变量以便测试缩短等待；产品代码不应修改它。
+var retryBackoffBase = 500 * time.Millisecond
+
 // RetrySegment 以有界指数退避重试 seg 以应对瞬时失败。context 取消
 // 和永久错误（见 StatusError）绝不重试，因为 manager 用取消来驱动
 // Pause/Stop/Reconfigure，而永久状态不会因等待而改变。
@@ -296,7 +306,7 @@ func RetrySegment(
 	seg func(context.Context) error,
 ) error {
 	const maxAttempts = 4
-	backoff := 500 * time.Millisecond
+	backoff := retryBackoffBase
 	var lastErr error
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		if err := ctx.Err(); err != nil {

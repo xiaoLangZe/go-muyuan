@@ -315,10 +315,23 @@ func (m *manager) onGenerationEnd(err error) {
 }
 
 // complete 将完成的 partial 文件改名为最终文件，并标记下载完成。
+// 同步与关闭失败不是可忽略的：它们可能意味着最终文件尚未落盘，
+// 因此按失败处理而不是假装成功。
 func (m *manager) complete() {
 	if m.partial != nil {
-		_ = m.partial.Sync()
-		_ = m.partial.Close()
+		if err := m.partial.Sync(); err != nil {
+			m.finish(StateFailed, fmt.Errorf("finalize sync: %w", err))
+			m.exit = true
+			_ = m.partial.Close()
+			m.partial = nil
+			return
+		}
+		if err := m.partial.Close(); err != nil {
+			m.finish(StateFailed, fmt.Errorf("finalize close: %w", err))
+			m.exit = true
+			m.partial = nil
+			return
+		}
 		m.partial = nil
 	}
 	if err := os.Rename(meta.PartialPath(m.out), m.out); err != nil {
@@ -555,11 +568,21 @@ func (m *manager) applyReconfigure() {
 }
 
 // applyRestart 清空进度，并以当前配置开始全新下载。
+// 截断失败意味着 partial 文件可能残留旧字节，无法安全重下，
+// 因此按失败处理而不是静默继续。
 func (m *manager) applyRestart() {
 	if m.partial != nil {
-		_ = m.partial.Truncate(0)
+		if err := m.partial.Truncate(0); err != nil {
+			m.finish(StateFailed, fmt.Errorf("restart truncate: %w", err))
+			m.exit = true
+			return
+		}
 		if m.total > 0 {
-			_ = m.partial.Truncate(m.total)
+			if err := m.partial.Truncate(m.total); err != nil {
+				m.finish(StateFailed, fmt.Errorf("restart preallocate: %w", err))
+				m.exit = true
+				return
+			}
 		}
 	}
 	_ = os.Remove(meta.MetaPath(m.out))
@@ -583,12 +606,19 @@ func (m *manager) applyRestart() {
 }
 
 // applyClearCache 删除所有磁盘进度，使 manager 保持空闲。
+// 删除失败被记录为终态错误，供 Wait 与 Progress().Err 观察；
+// 状态机本身仍转入空闲。
 func (m *manager) applyClearCache() {
+	var clearErr error
 	if m.partial != nil {
-		_ = m.partial.Close()
+		if err := m.partial.Close(); err != nil && clearErr == nil {
+			clearErr = fmt.Errorf("close partial: %w", err)
+		}
 		m.partial = nil
 	}
-	_ = meta.DeleteAndPartial(m.out)
+	if err := meta.DeleteAndPartial(m.out); err != nil && clearErr == nil {
+		clearErr = fmt.Errorf("delete sidecars: %w", err)
+	}
 
 	m.mu.Lock()
 	m.segs = nil
@@ -596,7 +626,7 @@ func (m *manager) applyClearCache() {
 	m.downloaded = 0
 	m.total = 0
 	m.state = StateIdle
-	m.finErr = nil
+	m.finErr = clearErr
 	m.finished = true
 	m.exit = true
 	m.mu.Unlock()
