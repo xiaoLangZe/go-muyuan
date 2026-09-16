@@ -3,9 +3,9 @@
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。所有值得注意的
 变更记录于此。版本号字段（`internal/transfer.Version`）与发布标签始终同步。
 
-## [Unreleased]
+## [v0.2.0] - 2026-09-17
 
-### 新增（v0.2.0 候选）
+### 新增
 
 - `Config.MaxBytesPerSec`：限制单文件全部连接合计的下载速率（令牌桶，1 秒突发）。
 - `Config.VerifySHA256`：下载完成后校验 SHA-256，不匹配则删除产物并以 `ErrChecksumMismatch` 失败。

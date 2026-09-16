@@ -32,12 +32,13 @@ func main() {
 		conn      = flag.Int("conn", 8, "concurrent connections")
 		seg       = flag.Int("seg", 0, "segments (0 = auto)")
 		stopAfter = flag.Duration("stop-after", 0, "stop the download after this duration, keeping progress (0 = run to completion)")
+		maxRate   = flag.Int64("max-rate", 0, "total download rate cap in bytes/sec (0 = unlimited)")
 		allow     = flag.Bool("allow-private", false, "allow private/loopback hosts")
 	)
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: resume [-o out] [-conn n] [-seg n] [-stop-after d] <url>")
+		fmt.Fprintln(os.Stderr, "usage: resume [-o out] [-conn n] [-seg n] [-stop-after d] [-max-rate n] <url>")
 		os.Exit(2)
 	}
 
@@ -50,6 +51,7 @@ func main() {
 		Connections:      *conn,
 		Segments:         *seg,
 		AllowPrivateHost: *allow,
+		MaxBytesPerSec:   *maxRate,
 		OnProgress: func(p downloader.Progress) {
 			fmt.Printf("\r%.1f%%  %d/%d bytes  %s", p.Percent, p.Downloaded, p.Total, p.State)
 		},
