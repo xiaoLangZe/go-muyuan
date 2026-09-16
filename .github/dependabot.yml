@@ -1,0 +1,18 @@
+# 依赖更新。Go 模块当前零第三方依赖；npm（wiki 文档站）除外。
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/wiki"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

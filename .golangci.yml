@@ -1,0 +1,36 @@
+# golangci-lint 配置：stdlib 零依赖项目，采用保守但有价值的规则集。
+# 中文注释不影响 lint；ST1020 类注释豁免由默认规则处理。
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - gocritic
+
+linters-settings:
+  errcheck:
+    # 与库的设计一致：仅明确忽略（_ =）需要人工审视，其余全查。
+    check-blank: true
+  misspell:
+    locale: US
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # 测试与示例里的 _ = 有意为之（清理路径、EOF 处理）。
+    - path: _test\.go
+      linters: [errcheck]
+    - path: examples/
+      linters: [errcheck]
+    # goimports 换行风格不在此强制。
+    - linters: [gofmt]
+      text: "File is not `gofmt`-ed"

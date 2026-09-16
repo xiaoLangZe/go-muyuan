@@ -66,6 +66,7 @@ type manager struct {
 	abortErr   error
 
 	partial *os.File
+	w       transfer.WriterAt // 包装过限速层的写入目标
 	meter   speedMeter
 
 	done     chan struct{} // run 返回时关闭
@@ -140,6 +141,10 @@ func (m *manager) init(ctx context.Context) error {
 		}
 	}
 	m.partial = f
+	m.w = f
+	if tw := newThrottleWriter(f, m.cfg.MaxBytesPerSec); tw != nil {
+		m.w = tw
+	}
 
 	m.segs, m.segmentCount = m.planFor(existing)
 
@@ -316,7 +321,8 @@ func (m *manager) onGenerationEnd(err error) {
 
 // complete 将完成的 partial 文件改名为最终文件，并标记下载完成。
 // 同步与关闭失败不是可忽略的：它们可能意味着最终文件尚未落盘，
-// 因此按失败处理而不是假装成功。
+// 因此按失败处理而不是假装成功。若配置了 VerifySHA256，rename
+// 之前会先校验整个文件，不匹配则删除产物并失败。
 func (m *manager) complete() {
 	if m.partial != nil {
 		if err := m.partial.Sync(); err != nil {
@@ -333,6 +339,21 @@ func (m *manager) complete() {
 			return
 		}
 		m.partial = nil
+	}
+	if m.cfg.VerifySHA256 != "" {
+		matched, got, err := verifySHA256(meta.PartialPath(m.out), m.cfg.VerifySHA256)
+		if err != nil {
+			m.finish(StateFailed, fmt.Errorf("verify checksum: %w", err))
+			m.exit = true
+			return
+		}
+		if !matched {
+			_ = meta.DeleteAndPartial(m.out)
+			m.finish(StateFailed, fmt.Errorf("%w: want %s, got %s",
+				ErrChecksumMismatch, m.cfg.VerifySHA256, got))
+			m.exit = true
+			return
+		}
 	}
 	if err := os.Rename(meta.PartialPath(m.out), m.out); err != nil {
 		m.finish(StateFailed, fmt.Errorf("finalize: %w", err))

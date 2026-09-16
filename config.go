@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -92,6 +93,17 @@ type Config struct {
 	// 私有（RFC1918）以及其他保留地址段。默认关闭以作为 SSRF
 	// 防护；仅当确实需要从可信 LAN 下载时开启。
 	AllowPrivateHost bool
+
+	// MaxBytesPerSec 限制该文件全部连接合计的下载速率（字节/秒）。
+	// 0 表示不限速。速率限制作用于写盘侧：所有连接共享同一个
+	// 令牌桶，因此超出的字节会等待而不是被丢弃。运行期不可
+	// 热重配——更改它需要重启下载。
+	MaxBytesPerSec int64
+
+	// VerifySHA256 是期望的 SHA-256 校验和（64 位十六进制）。
+	// 非空时下载完成后会校验整个文件，不匹配则删除产物并以
+	// ErrChecksumMismatch 失败。
+	VerifySHA256 string
 }
 
 // Validate 归一化默认值并校验必填字段。它会被 [New] 调用；调用方
@@ -153,6 +165,17 @@ func (c *Config) Validate() error {
 	}
 	if c.MinSegmentSize < plan.DefaultMinSegmentSize/64 { // 16 KiB 下限：更小的 Range 请求没有意义
 		c.MinSegmentSize = plan.DefaultMinSegmentSize / 64
+	}
+	if c.MaxBytesPerSec < 0 {
+		return fmt.Errorf("%w: MaxBytesPerSec %d must be >= 0", ErrInvalidConfig, c.MaxBytesPerSec)
+	}
+	if c.VerifySHA256 != "" {
+		if len(c.VerifySHA256) != 64 {
+			return fmt.Errorf("%w: VerifySHA256 must be 64 hex chars", ErrInvalidConfig)
+		}
+		if _, err := hex.DecodeString(c.VerifySHA256); err != nil {
+			return fmt.Errorf("%w: VerifySHA256 is not hex: %v", ErrInvalidConfig, err)
+		}
 	}
 
 	// 预校验 URL/主机，让调用方在 New 时而非 Start 时就知道

@@ -4,9 +4,10 @@
 
 ```go
 var (
-	ErrInvalidConfig  = errors.New("downloader: invalid config")
-	ErrAlreadyRunning = errors.New("downloader: already running")
-	ErrAborted        = errors.New("downloader: aborted")
+	ErrInvalidConfig    = errors.New("downloader: invalid config")
+	ErrAlreadyRunning   = errors.New("downloader: already running")
+	ErrAborted          = errors.New("downloader: aborted")
+	ErrChecksumMismatch = errors.New("downloader: checksum mismatch")
 )
 ```
 
@@ -15,6 +16,7 @@ var (
 | `ErrInvalidConfig` | `New` / `NewQueue` finds a missing required field or an out-of-range value |
 | `ErrAlreadyRunning` | `Start` while the download is already running or paused |
 | `ErrAborted` | the caller aborted before completion; returned from `Wait` |
+| `ErrChecksumMismatch` | `VerifySHA256` was set and the completed content digest did not match; returned from `Wait` |
 
 ## Config
 
@@ -34,6 +36,8 @@ type Config struct {
 	OnProgress       ProgressFunc
 	MinSegmentSize   int
 	AllowPrivateHost bool
+	MaxBytesPerSec   int64
+	VerifySHA256     string
 }
 
 func (c *Config) Validate() error

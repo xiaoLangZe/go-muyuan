@@ -18,6 +18,8 @@
 | `OnProgress` | Progress callback | none |
 | `MinSegmentSize` | Lower bound for auto segment sizing | `1 MiB` |
 | `AllowPrivateHost` | Permit LAN/loopback targets (disables SSRF guard) | `false` |
+| `MaxBytesPerSec` | Total rate cap for all of the file's connections (bytes/s); `0` = unlimited; not live-reconfigurable | `0` |
+| `VerifySHA256` | Expected SHA-256 (64 hex chars); when set, verified on completion — mismatch deletes the output and fails with `ErrChecksumMismatch` | empty |
 
 ## The four configuration modes
 
@@ -39,7 +41,12 @@
 
 ## Runtime use of the same modes
 
-All four modes are also available while a download is running — via `SetWorkers` / `SetConnections` / `SetSegments` / `SetConnectionsAndSegments`, with downloaded bytes preserved. See [Runtime Control](./runtime-control).
+All four modes are also available while a download is running — via `SetWorkers` / `SetConnections` / `SetSegments` / `SetConnectionsAndSegments`, with downloaded bytes preserved. See [Runtime Control](./runtime-control). `MaxBytesPerSec` and `VerifySHA256` are **not** part of live reconfiguration — restart the download to change them.
+
+## Rate limiting and integrity verification
+
+- **`MaxBytesPerSec`** throttles write throughput with a token bucket; it is the cap across **all** connections combined (with a 1-second burst allowance). Bytes are never dropped — they just wait. Useful for quiet background downloads. Inherited via `Template` in a queue.
+- **`VerifySHA256`** streams the whole file through SHA-256 before the rename and compares it with the expected digest. On mismatch the output and sidecars are deleted and `Wait` returns an error wrapping `ErrChecksumMismatch` — a wrong file never survives. Pair it with a published digest (e.g. from a release page).
 
 ## Notes on individual fields
 

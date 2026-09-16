@@ -6,6 +6,11 @@ on:
     paths:
       - "wiki/**"
       - ".github/workflows/deploy-docs.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "wiki/**"
+      - ".github/workflows/deploy-docs.yml"
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages.
@@ -45,6 +50,8 @@ jobs:
           path: wiki/.vitepress/dist
 
   deploy:
+    # 仅主分支推送时部署；PR 只验证构建。
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     environment:

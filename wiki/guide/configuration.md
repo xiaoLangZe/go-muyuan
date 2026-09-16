@@ -18,6 +18,8 @@
 | `OnProgress` | 进度回调 | 无 |
 | `MinSegmentSize` | 自动切片时的单片下限 | `1 MiB` |
 | `AllowPrivateHost` | 允许局域网/回环目标（关闭 SSRF 防护） | `false` |
+| `MaxBytesPerSec` | 该文件全部连接合计的速率上限（字节/秒）；`0` = 不限；运行期不可热重配 | `0` |
+| `VerifySHA256` | 期望的 SHA-256（64 位十六进制）；非空时完成校验，不匹配则删除产物并以 `ErrChecksumMismatch` 失败 | 空 |
 
 ## 四种配置模式
 
@@ -39,7 +41,12 @@
 
 ## 运行时同样可改
 
-上面四种模式在下载运行期间同样可用——对应 `SetWorkers` / `SetConnections` / `SetSegments` / `SetConnectionsAndSegments`，已下载字节会保留。详见[运行时控制](./runtime-control)。
+上面四种模式在下载运行期间同样可用——对应 `SetWorkers` / `SetConnections` / `SetSegments` / `SetConnectionsAndSegments`，已下载字节会保留。详见[运行时控制](./runtime-control)。`MaxBytesPerSec` 与 `VerifySHA256` **不**参与热重配：需要更改时重启下载。
+
+## 限速与完整性校验
+
+- **`MaxBytesPerSec`** 用令牌桶限制写盘速率，是所有连接**合计**的上限（含 1 秒突发配额）。字节不会丢失，只会等待；适合"后台静默下载、不给链路打满"的场景。Queue 里经 `Template` 继承。
+- **`VerifySHA256`** 在 rename 之前流式计算整个文件的 SHA-256 并对比。不匹配时产物与附属文件会被删除，`Wait` 返回包裹着 `ErrChecksumMismatch` 的错误——不会留下一个错误的文件。配合已知摘要（如发布页提供的 checksums）即可确保完整下载。
 
 ## QoS 相关字段
 

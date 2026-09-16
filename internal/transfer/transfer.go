@@ -14,8 +14,13 @@ import (
 	"time"
 )
 
+// Version 是库的当前版本，与仓库的语义化版本标签（如 v0.2.0）
+// 保持一致。发布时必须同步更新它；DefaultUserAgent 由它派生，
+// CHANGELOG 与 README 中的版本号也应一并更新。
+const Version = "0.2.0"
+
 // DefaultUserAgent 是未在请求头显式设置 User-Agent 时使用的默认值。
-const DefaultUserAgent = "go-muyuan/0.1.0"
+const DefaultUserAgent = "go-muyuan/" + Version
 
 // ProbeResult 是探测远端资源得到的结果。
 type ProbeResult struct {

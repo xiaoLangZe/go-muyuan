@@ -7,6 +7,7 @@ var (
 	ErrInvalidConfig = errors.New("downloader: invalid config")
 	ErrAlreadyRunning = errors.New("downloader: already running")
 	ErrAborted       = errors.New("downloader: aborted")
+	ErrChecksumMismatch = errors.New("downloader: checksum mismatch")
 )
 ```
 
@@ -15,6 +16,7 @@ var (
 | `ErrInvalidConfig` | `New` / `NewQueue` 发现缺少必填字段或取值越界 |
 | `ErrAlreadyRunning` | `Start` 时下载已在运行或暂停 |
 | `ErrAborted` | 调用方在完成前中止，从 `Wait` 返回 |
+| `ErrChecksumMismatch` | 设置了 `VerifySHA256` 且完成后的内容摘要不匹配，从 `Wait` 返回 |
 
 ## Config
 
@@ -34,6 +36,8 @@ type Config struct {
 	OnProgress       ProgressFunc
 	MinSegmentSize   int
 	AllowPrivateHost bool
+	MaxBytesPerSec   int64
+	VerifySHA256     string
 }
 
 func (c *Config) Validate() error

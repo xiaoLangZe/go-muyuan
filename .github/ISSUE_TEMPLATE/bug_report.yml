@@ -1,0 +1,34 @@
+---
+name: 错误报告
+about: 报告 bug，帮助改进 go-muyuan
+title: "[Bug] "
+labels: bug
+assignees: ""
+---
+
+## 描述
+
+<!-- 清晰描述发生了什么。 -->
+
+## 复现步骤
+
+1.
+2.
+3.
+
+## 期望行为
+
+## 实际行为 / 错误输出
+
+## 环境
+
+- go-muyuan 版本（`go list -m github.com/xiaoLangZe/go-muyuan`）：
+- Go 版本（`go version`）：
+- 操作系统：
+- 关键配置（`Connections`/`Segments`/`Workers`、`AllowPrivateHost`、
+  `Proxy`、`MaxBytesPerSec`、`VerifySHA256` 是否设置——注意不要
+  贴出敏感的真实 URL 与令牌）：
+
+## 附加信息
+
+<!-- 日志、截图、最小复现代码等。 -->

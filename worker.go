@@ -21,7 +21,7 @@ func (m *manager) worker(ctx context.Context, cancel context.CancelFunc) error {
 		if !m.acceptRanges {
 			// 顺序、一次性下载。不可续传。
 			err := transfer.RetrySegment(ctx, func(c context.Context) error {
-				return transfer.DownloadSequential(c, m.client, m.url, m.cfg.Headers, m.partial,
+				return transfer.DownloadSequential(c, m.client, m.url, m.cfg.Headers, m.w,
 					func(n int64) { m.addBytes(0, n) })
 			})
 			if err != nil {
@@ -43,7 +43,7 @@ func (m *manager) worker(ctx context.Context, cancel context.CancelFunc) error {
 			if done {
 				return nil
 			}
-			return transfer.DownloadSegment(c, m.client, m.url, m.cfg.Headers, start, end, m.partial,
+			return transfer.DownloadSegment(c, m.client, m.url, m.cfg.Headers, start, end, m.w,
 				func(n int64) { m.addBytes(idx, n) })
 		})
 		if err != nil {

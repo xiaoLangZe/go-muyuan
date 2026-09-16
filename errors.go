@@ -24,4 +24,7 @@ var (
 	// ErrAborted 在下载被调用方在完成前中止时，从 [Downloader.Wait]
 	// 返回。
 	ErrAborted = errors.New("downloader: aborted")
+	// ErrChecksumMismatch 在设置了 Config.VerifySHA256 且下载完成
+	// 后的内容校验不匹配时，从 [Downloader.Wait] 返回。
+	ErrChecksumMismatch = errors.New("downloader: checksum mismatch")
 )
