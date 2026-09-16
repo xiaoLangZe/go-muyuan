@@ -62,9 +62,9 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.62.2
+        # 用当前工具链（Go 1.26）现场构建：预构建二进制由 go1.23
+        # 生成，无法分析 go 1.26 模块。
+        run: go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2 run ./...
 
   docs:
     name: Docs (wiki) build on PR
