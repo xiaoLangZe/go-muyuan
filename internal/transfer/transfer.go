@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -174,6 +175,24 @@ func setDefaultUserAgent(h http.Header) {
 	}
 }
 
+// chunkSize 是下载流单个读取块的大小（32 KiB）。
+const chunkSize = 1 << 15
+
+// chunkPool 复用下载读取缓冲：每次分片尝试与每个连接都会读很多块，
+// 池化避免 32 KiB 缓冲被反复分配（高连接数时是主要分配来源）。
+var chunkPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, chunkSize)
+		return &b
+	},
+}
+
+// acquireChunk 从池中取一块读取缓冲。
+func acquireChunk() *[]byte { return chunkPool.Get().(*[]byte) }
+
+// releaseChunk 归还读取缓冲。
+func releaseChunk(b *[]byte) { chunkPool.Put(b) }
+
 // WriterAt 是范围下载器所需的 *os.File 子集，以便测试可替换为
 // 内存实现。
 type WriterAt interface {
@@ -217,7 +236,9 @@ func DownloadSegment(
 		return StatusError("range request", resp.StatusCode)
 	}
 
-	buf := make([]byte, 1<<15) // 32 KiB
+	bufp := acquireChunk()
+	buf := *bufp
+	defer releaseChunk(bufp)
 	offset := start
 	for {
 		if err := ctx.Err(); err != nil {
@@ -271,7 +292,9 @@ func DownloadSequential(
 		return StatusError("get", resp.StatusCode)
 	}
 
-	buf := make([]byte, 1<<15)
+	bufp := acquireChunk()
+	buf := *bufp
+	defer releaseChunk(bufp)
 	var offset int64
 	for {
 		if err := ctx.Err(); err != nil {

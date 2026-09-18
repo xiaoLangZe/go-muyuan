@@ -333,6 +333,39 @@ func TestResumeSamePayloadContinues(t *testing.T) {
 	}
 }
 
+// TestConcurrentProgressDuringReconfigure 并发读取快照并热重配。
+// 回归：Snapshot 曾在 segments 为空时越过锁边界读 segmentCount；
+// CI 的 -race 会检验本例下的数据竞争，实际跑通则验证不 panic。
+func TestConcurrentProgressDuringReconfigure(t *testing.T) {
+	payload := testFile(1 << 20)
+	srv, _ := rangeServer(t, payload, 10*time.Millisecond)
+	d := newTestDownloader(t, srv.URL, t.TempDir()+"/f.bin", 2, 4)
+	if err := d.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 50; i++ {
+			_ = d.Progress()
+		}
+	}()
+	for i := 0; i < 8; i++ {
+		d.SetSegments(2 + i%3)
+		time.Sleep(25 * time.Millisecond)
+	}
+	<-done
+
+	if err := d.Wait(); err != nil {
+		t.Fatalf("Wait: %v", err)
+	}
+	got := readFileBytes(t, d.Progress().OutputPath)
+	if sha(got) != sha(payload) {
+		t.Fatal("content mismatch after concurrent reconfigure")
+	}
+}
+
 // waitFor 轮询 cond 直到为真或超时。
 func waitFor(t *testing.T, cond func() bool, msg string) {
 	t.Helper()

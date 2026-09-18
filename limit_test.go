@@ -39,10 +39,10 @@ func readFileBytes(t *testing.T, path string) []byte {
 // TestNewThrottleWriterZeroRate 零或负速率返回 nil（直通）。
 func TestNewThrottleWriterZeroRate(t *testing.T) {
 	f := newMemWriter()
-	if got := newThrottleWriter(f, 0); got != nil {
+	if got := newThrottleWriter(f, 0, nil); got != nil {
 		t.Fatal("rate 0 should yield nil throttle")
 	}
-	if got := newThrottleWriter(f, -1); got != nil {
+	if got := newThrottleWriter(f, -1, nil); got != nil {
 		t.Fatal("negative rate should yield nil throttle")
 	}
 }
@@ -50,7 +50,7 @@ func TestNewThrottleWriterZeroRate(t *testing.T) {
 // TestThrottleWriterBurst 1 秒突发配额内写入不等待。
 func TestThrottleWriterBurst(t *testing.T) {
 	f := newMemWriter()
-	tw := newThrottleWriter(f, 1<<20) // 1 MiB/s，桶容量 1 MiB
+	tw := newThrottleWriter(f, 1<<20, nil) // 1 MiB/s，桶容量 1 MiB
 	start := time.Now()
 	if _, err := tw.WriteAt(make([]byte, 64<<10), 0); err != nil {
 		t.Fatalf("WriteAt: %v", err)
@@ -64,7 +64,7 @@ func TestThrottleWriterBurst(t *testing.T) {
 func TestThrottleWriterWaits(t *testing.T) {
 	const rate int64 = 128 << 10 // 128 KiB/s
 	f := newMemWriter()
-	tw := newThrottleWriter(f, rate)
+	tw := newThrottleWriter(f, rate, nil)
 
 	// 先耗尽 1 秒突发。
 	if _, err := tw.WriteAt(make([]byte, rate), 0); err != nil {
@@ -84,10 +84,39 @@ func TestThrottleWriterWaits(t *testing.T) {
 	}
 }
 
+// TestThrottleWriterCancelInterruptsWait 极低速率下，关闭 done 通道
+// 必须在约一个切片时长内打断等待（回归：此前单次长睡可把 Abort/
+// Close 卡在小时级）。
+func TestThrottleWriterCancelInterruptsWait(t *testing.T) {
+	const rate int64 = 1 // 1 B/s：任意写入都需要极长等待
+	f := newMemWriter()
+	done := make(chan struct{})
+	tw := newThrottleWriter(f, rate, done)
+
+	// 先耗尽 1 字节的突发配额。
+	if _, err := tw.WriteAt([]byte{1}, 0); err != nil {
+		t.Fatalf("burst WriteAt: %v", err)
+	}
+
+	go func() {
+		time.Sleep(120 * time.Millisecond)
+		close(done)
+	}()
+
+	start := time.Now()
+	// 10 字节 @ 1 B/s 理论上要等 10 秒；取消应在 1s 内打断。
+	if _, err := tw.WriteAt(make([]byte, 10), 1); err != nil {
+		t.Fatalf("WriteAt: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("cancel did not interrupt the wait (took %v)", elapsed)
+	}
+}
+
 // TestThrottleWriterPassesThrough 字节原样透传到底层（含偏移）。
 func TestThrottleWriterPassesThrough(t *testing.T) {
 	f := newMemWriter()
-	tw := newThrottleWriter(f, 1<<20)
+	tw := newThrottleWriter(f, 1<<20, nil)
 	payload := []byte("rate limited bytes")
 	if _, err := tw.WriteAt(payload, 7); err != nil {
 		t.Fatalf("WriteAt: %v", err)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/xiaoLangZe/go-muyuan/internal/meta"
@@ -48,7 +49,10 @@ type manager struct {
 	acceptRanges bool
 	etag         string
 	lastModified string
-	downloaded   int64
+	// downloaded 是聚合字节计数，用原子量维护：每个分片的进度仍需
+	// mu，但聚合计数被每个连接的每次写入触碰，原子化可避免全部
+	// worker 在同一个互斥锁上排队。
+	downloaded   atomic.Int64
 	segmentCount int
 
 	// 慢分片拆分簿记（仅 manager 协程）
@@ -157,14 +161,14 @@ func (m *manager) init(ctx context.Context) error {
 	}
 	m.partial = f
 	m.w = f
-	if tw := newThrottleWriter(f, m.cfg.MaxBytesPerSec); tw != nil {
+	if tw := newThrottleWriter(f, m.cfg.MaxBytesPerSec, m.parent.Done()); tw != nil {
 		m.w = tw
 	}
 
 	m.segs, m.segmentCount = m.planFor(existing)
 
 	m.claimed = make([]bool, len(m.segs))
-	m.downloaded = plan.SumDownloaded(m.segs)
+	m.downloaded.Store(plan.SumDownloaded(m.segs))
 	m.meter.reset()
 
 	m.mu.Lock()
@@ -384,7 +388,7 @@ func (m *manager) complete() {
 	_ = os.Remove(meta.MetaPath(m.out)) //nolint:errcheck
 	m.mu.Lock()
 	m.state = StateCompleted
-	m.downloaded = m.total
+	m.downloaded.Store(m.total)
 	m.finished = true
 	m.exit = true
 	m.mu.Unlock()
@@ -411,20 +415,23 @@ func (m *manager) report() {
 }
 
 // Snapshot 返回当前进度。可从任意协程安全调用。
+// 一个热重配可能正在发生：所有字段都在同一持锁块内读取，
+// segmentCount 概不外读，避免越过锁边界读到中间状态。
 func (m *manager) Snapshot() Progress {
 	m.mu.Lock()
 	st := m.state
-	downloaded := m.downloaded
+	downloaded := m.downloaded.Load()
 	total := m.total
 	accept := m.acceptRanges
 	segments := len(m.segs)
+	segmentCount := m.segmentCount
 	ferr := m.finErr
 	connections := m.cfg.Connections
 	workers := m.cfg.Workers
 	m.mu.Unlock()
 
 	if segments == 0 {
-		segments = m.segmentCount
+		segments = segmentCount
 	}
 
 	now := time.Now()
@@ -597,7 +604,7 @@ func (m *manager) applyReconfigure() {
 		m.segmentCount = segments
 		// 从新 plan 重新推导聚合值：重新切分只保留每分片的连续
 		// 前缀，因此空洞之后被孤立的字节不再计入（它们会被重下）。
-		m.downloaded = plan.SumDownloaded(np)
+		m.downloaded.Store(plan.SumDownloaded(np))
 		m.mu.Unlock()
 
 		m.saveMeta(true)
@@ -638,7 +645,7 @@ func (m *manager) applyRestart() {
 	m.segs = plan.BuildPlan(m.total, segments)
 	m.claimed = make([]bool, len(m.segs))
 	m.segmentCount = segments
-	m.downloaded = 0
+	m.downloaded.Store(0)
 	m.state = StateRunning
 	m.finErr = nil
 	m.mu.Unlock()
@@ -666,7 +673,7 @@ func (m *manager) applyClearCache() {
 	m.mu.Lock()
 	m.segs = nil
 	m.claimed = nil
-	m.downloaded = 0
+	m.downloaded.Store(0)
 	m.total = 0
 	m.state = StateIdle
 	m.finErr = clearErr

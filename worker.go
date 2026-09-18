@@ -91,10 +91,13 @@ func (m *manager) segmentBounds(idx int) (start, end int64, done bool) {
 }
 
 // addBytes 将新写入的 n 字节计入分片 idx 和聚合计数器。
+// 分片级计数走互斥锁，聚合计数为原子量：每个连接的每次写入都
+// 触碰聚合计数，原子化避免全部 worker 在同一把锁上排队。
 func (m *manager) addBytes(idx int, n int64) {
 	if n <= 0 {
 		return
 	}
+	m.downloaded.Add(n)
 	m.mu.Lock()
 	if idx >= 0 && idx < len(m.segs) {
 		c := &m.segs[idx]
@@ -103,7 +106,6 @@ func (m *manager) addBytes(idx int, n int64) {
 			c.Downloaded = c.Size()
 		}
 	}
-	m.downloaded += n
 	m.mu.Unlock()
 }
 

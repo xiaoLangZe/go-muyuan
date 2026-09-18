@@ -15,8 +15,10 @@ import (
 
 // 默认可调参数与边界值。
 const (
-	defaultConnections    = 8
-	defaultMinSegmentSize = 1 << 20 // 1 MiB；分片更小会造成浪费
+	defaultConnections = 8
+	// defaultMinSegmentSize 与 internal/plan 的默认最小分片尺寸保持
+	// 同一来源，避免两处维护同一魔法数。
+	defaultMinSegmentSize = plan.DefaultMinSegmentSize
 	maxConnections        = 256
 	maxSegments           = 4096
 	maxWorkers            = 256
