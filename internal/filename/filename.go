@@ -1,9 +1,15 @@
-package go_muyuan
+// Package filename turns an untrusted candidate into a file name that is safe
+// to create inside the download directory: a single path element with no
+// traversal, no characters Windows rejects and no reserved device name.
+//
+// The candidates come from places that are not under the caller's control — the
+// Content-Disposition header of a remote server, the last element of a URL — so
+// every one of them is reduced to its last path element before it is used.
+package filename
 
 import (
 	"fmt"
 	"mime"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -11,65 +17,18 @@ import (
 	"unicode/utf8"
 )
 
-// partSuffix marks the file a transfer is written to until it completes.
-const partSuffix = ".part"
+// Fallback is used when neither the caller, the server, nor the URL suggests a
+// name.
+const Fallback = "download"
 
-// fallbackFileName is used when neither the options, the server, nor the URL
-// suggest a name.
-const fallbackFileName = "download"
+// MaxLen bounds a generated file name, leaving room for the directory and for
+// filesystems that count bytes rather than characters.
+const MaxLen = 200
 
-// maxNameLen bounds a generated file name, leaving room for the directory and
-// for filesystems that count bytes rather than characters.
-const maxNameLen = 200
-
-// partPath returns where the bytes are written until the transfer completes.
-func (h *Handle) partPath() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.filePathLocked() + partSuffix
-}
-
-// paths returns the partial and final paths from one consistent snapshot.
-func (h *Handle) paths() (part, final string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	final = h.filePathLocked()
-	return final + partSuffix, final
-}
-
-// filePathLocked is the final path; the caller holds the lock.
-func (h *Handle) filePathLocked() string {
-	return filepath.Join(h.cfg.dir, h.fileName)
-}
-
-// resolvePaths fixes the target name once the server has answered. A name given
-// through WithFileName always wins; otherwise the server's Content-Disposition
-// is preferred over the name taken from the URL.
-func (h *Handle) resolvePaths(resp *http.Response) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.resolved {
-		return
-	}
-	var name string
-	if resp != nil {
-		name = filenameFromHeader(resp.Header.Get("Content-Disposition"))
-	}
-	if name == "" {
-		name = filenameFromURL(h.target)
-	}
-	name = sanitizeFileName(name)
-	if name == "" {
-		name = fallbackFileName
-	}
-	h.fileName = uniqueName(h.cfg.dir, name, h.cfg.overwrite)
-	h.resolved = true
-}
-
-// filenameFromHeader extracts the name a Content-Disposition header advertises.
-// The RFC 2231 and RFC 5987 encoded forms are handled by mime.ParseMediaType,
+// FromHeader extracts the name a Content-Disposition header advertises. The
+// RFC 2231 and RFC 5987 encoded forms are handled by mime.ParseMediaType,
 // including the filename* variant used for non-ASCII names.
-func filenameFromHeader(value string) string {
+func FromHeader(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return ""
 	}
@@ -89,10 +48,10 @@ func filenameFromHeader(value string) string {
 	return ""
 }
 
-// filenameFromURL derives a name from the last path element of the URL. Query
-// and fragment are not part of the path, so a signed URL does not leak its
-// token into the file name.
-func filenameFromURL(u *url.URL) string {
+// FromURL derives a name from the last path element of the URL. Query and
+// fragment are not part of the path, so a signed URL does not leak its token
+// into the file name.
+func FromURL(u *url.URL) string {
 	if u == nil {
 		return ""
 	}
@@ -107,11 +66,9 @@ func filenameFromURL(u *url.URL) string {
 	return name
 }
 
-// sanitizeFileName turns a candidate into a name that is safe to create inside
-// the output directory: a single path element with no traversal, no characters
-// Windows rejects and no reserved device name. It returns "" when nothing
-// usable is left.
-func sanitizeFileName(name string) string {
+// Sanitize reduces a candidate to a name that is safe to create in a directory.
+// It returns "" when nothing usable is left.
+func Sanitize(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ""
@@ -140,7 +97,7 @@ func sanitizeFileName(name string) string {
 	if isReservedName(name) {
 		name = "_" + name
 	}
-	return truncateName(name, maxNameLen)
+	return truncateName(name, MaxLen)
 }
 
 // reservedNames are the device names Windows refuses to create.
@@ -182,10 +139,10 @@ func truncateName(name string, limit int) string {
 	return name + ext
 }
 
-// uniqueName returns name, or the first free variant of it when the file
-// already exists and overwriting is not allowed: report.pdf, report_1.pdf,
+// Unique returns name, or the first free variant of it when the file already
+// exists and overwriting is not allowed: report.pdf, report_1.pdf,
 // report_2.pdf, ...
-func uniqueName(dir, name string, overwrite bool) string {
+func Unique(dir, name string, overwrite bool) string {
 	if overwrite || name == "" {
 		return name
 	}

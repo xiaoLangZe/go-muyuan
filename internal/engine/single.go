@@ -1,4 +1,4 @@
-package go_muyuan
+package engine
 
 import (
 	"context"
@@ -14,39 +14,30 @@ import (
 	"time"
 )
 
-// rangeState records what the server said about partial requests.
-type rangeState int8
-
-const (
-	// rangeUnknown means no range request has been answered yet.
-	rangeUnknown rangeState = iota
-	// rangeSupported means the server answers with 206 and a matching offset.
-	rangeSupported
-	// rangeUnsupported means the server ignores the Range header, so an
-	// interrupted transfer has to start over.
-	rangeUnsupported
-)
-
-// work runs the transfer until it completes, gives up, or is stopped.
-func (h *Handle) work(ctx context.Context) {
-	delay := h.cfg.retryDelay
+// runSingle fetches the file over one connection, retrying transient failures.
+// A nil return means the finished file is in place.
+func (t *Transfer) runSingle(ctx context.Context) error {
+	delay := t.cfg.RetryDelay
 	var lastErr error
 
 	for attempt := 0; ; attempt++ {
 		if ctx.Err() != nil {
 			break
 		}
-		lastErr = h.attempt(ctx)
+		lastErr = t.attempt(ctx)
 		if lastErr == nil {
-			h.finish(StatusCompleted, nil)
-			h.emit()
-			return
+			return nil
+		}
+		if t.promoted() {
+			// The budget grew while this request was in flight; the bytes
+			// written so far stay on disk and the parallel path takes over.
+			return errPromote
 		}
 		if ctx.Err() != nil {
-			// The handle was paused, deleted or canceled while transferring.
+			// The transfer was paused, deleted or canceled while transferring.
 			break
 		}
-		if attempt >= h.cfg.retries || !isTransient(lastErr) {
+		if attempt >= t.cfg.Retries || !isTransient(lastErr) {
 			break
 		}
 		if !sleep(ctx, delay) {
@@ -57,39 +48,40 @@ func (h *Handle) work(ctx context.Context) {
 		}
 	}
 
-	h.mu.Lock()
-	stopped := h.status == StatusPaused || h.status == StatusDeleted
-	h.mu.Unlock()
-	if stopped {
-		// Pause and Delete own the state they put the handle in.
-		return
-	}
 	if lastErr == nil {
 		lastErr = ctx.Err()
 	}
 	if lastErr == nil {
-		lastErr = errors.New("download stopped before the file was complete")
+		lastErr = errIncomplete
 	}
-	h.finish(StatusFailed, lastErr)
+	return lastErr
 }
 
 // attempt performs one request and appends the response body to the partial
 // file. A nil return means the finished file is in place.
-func (h *Handle) attempt(ctx context.Context) error {
-	h.mu.Lock()
-	offset := h.downloaded
-	validator := h.validator
-	askRange := offset > 0 && h.ranges != rangeUnsupported
-	h.mu.Unlock()
+func (t *Transfer) attempt(ctx context.Context) error {
+	t.mu.Lock()
+	offset := t.downloaded
+	validator := t.validator
+	askRange := offset > 0 && t.ranges != RangeUnsupported
+	t.mu.Unlock()
 
 	reqCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	t.mu.Lock()
+	t.attemptCut = cancel
+	t.mu.Unlock()
+	defer func() {
+		t.mu.Lock()
+		t.attemptCut = nil
+		t.mu.Unlock()
+	}()
 
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, h.url, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, t.url, nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
-	for key, values := range h.cfg.headers {
+	for key, values := range t.cfg.Headers {
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
@@ -104,18 +96,18 @@ func (h *Handle) attempt(ctx context.Context) error {
 		}
 	}
 
-	resp, err := h.cfg.client.Do(req)
+	resp, err := t.cfg.Client.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
 			// The caller stopped the transfer; the retry loop checks the
 			// context and breaks out.
-			return fmt.Errorf("request %s: %w", h.url, err)
+			return fmt.Errorf("request %s: %w", t.url, err)
 		}
-		return transient(fmt.Errorf("request %s: %w", h.url, err))
+		return transient(fmt.Errorf("request %s: %w", t.url, err))
 	}
 	defer resp.Body.Close()
 
-	h.observeHeaders(resp)
+	t.observeHeaders(resp)
 
 	var total int64
 	switch resp.StatusCode {
@@ -125,17 +117,17 @@ func (h *Handle) attempt(ctx context.Context) error {
 			// That happens when the server does not do ranges at all, and when
 			// it does but the resource changed under us.
 			if askRange && validator == "" {
-				h.setRanges(rangeUnsupported)
+				t.setRanges(RangeUnsupported)
 			}
-			h.discardProgress()
+			t.discardProgress()
 			offset = 0
 		} else if strings.EqualFold(resp.Header.Get("Accept-Ranges"), "bytes") {
-			h.setRanges(rangeSupported)
+			t.setRanges(RangeSupported)
 		}
 		if resp.ContentLength >= 0 {
 			total = resp.ContentLength
 		}
-		h.setTotal(total)
+		t.setTotal(total)
 
 	case http.StatusPartialContent:
 		start, size, err := parseContentRange(resp.Header.Get("Content-Range"))
@@ -143,30 +135,30 @@ func (h *Handle) attempt(ctx context.Context) error {
 			return err
 		}
 		if start != offset {
-			h.discardProgress()
+			t.discardProgress()
 			return transient(fmt.Errorf("server answered from byte %d, expected %d", start, offset))
 		}
-		h.setRanges(rangeSupported)
+		t.setRanges(RangeSupported)
 		total = size
-		h.setTotal(total)
+		t.setTotal(total)
 
 	case http.StatusRequestedRangeNotSatisfiable:
 		_, size, _ := parseContentRange(resp.Header.Get("Content-Range"))
 		if size > 0 && offset >= size {
 			// Everything is on disk already; only the rename is missing.
-			h.setTotal(size)
-			h.report(size)
-			return h.commit(nil)
+			t.setTotal(size)
+			t.report(size)
+			return t.commit(nil)
 		}
-		h.discardProgress()
+		t.discardProgress()
 		return transient(fmt.Errorf("server rejected the range request at offset %d", offset))
 
 	default:
-		return &HTTPStatusError{StatusCode: resp.StatusCode, Status: resp.Status, URL: h.url}
+		return &HTTPStatusError{StatusCode: resp.StatusCode, Status: resp.Status, URL: t.url}
 	}
 
-	h.resolvePaths(resp)
-	part, _ := h.paths()
+	t.resolvePaths(resp)
+	part, _ := t.paths()
 
 	file, err := openPartial(part, offset)
 	if err != nil {
@@ -180,10 +172,10 @@ func (h *Handle) attempt(ctx context.Context) error {
 
 	var lastRead atomic.Int64
 	lastRead.Store(time.Now().UnixNano())
-	stopWatch := watchStall(h.cfg.stallTimeout, cancel, &lastRead)
+	stopWatch := watchStall(t.cfg.StallTimeout, cancel, &lastRead)
 	defer stopWatch()
 
-	buffer := make([]byte, h.cfg.bufferSize)
+	buffer := make([]byte, t.cfg.BufferSize)
 	written := offset
 	for {
 		n, readErr := resp.Body.Read(buffer)
@@ -193,16 +185,19 @@ func (h *Handle) attempt(ctx context.Context) error {
 			}
 			written += int64(n)
 			lastRead.Store(time.Now().UnixNano())
-			h.report(written)
+			t.report(written)
 		}
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
 				break
 			}
 			if ctx.Err() == nil && reqCtx.Err() != nil {
-				// Only the stall watchdog cancels the request context while the
-				// download itself is still wanted.
-				return transient(fmt.Errorf("%w: no data for %s", ErrStalled, h.cfg.stallTimeout))
+				// Only the stall watchdog or a promotion cancels the request
+				// context while the download itself is still wanted.
+				if t.promoted() {
+					return errPromote
+				}
+				return transient(fmt.Errorf("%w: no data for %s", ErrStalled, t.cfg.StallTimeout))
 			}
 			return transient(fmt.Errorf("read body: %w", readErr))
 		}
@@ -213,12 +208,12 @@ func (h *Handle) attempt(ctx context.Context) error {
 		// from what was written.
 		return transient(fmt.Errorf("body ended after %d of %d bytes", written, total))
 	}
-	return h.commit(file)
+	return t.commit(file)
 }
 
 // observeHeaders keeps the validator that makes a later range request safe: the
 // server only answers it when the resource still matches.
-func (h *Handle) observeHeaders(resp *http.Response) {
+func (t *Transfer) observeHeaders(resp *http.Response) {
 	validator := strings.TrimSpace(resp.Header.Get("ETag"))
 	if validator == "" {
 		validator = strings.TrimSpace(resp.Header.Get("Last-Modified"))
@@ -226,16 +221,16 @@ func (h *Handle) observeHeaders(resp *http.Response) {
 	if validator == "" {
 		return
 	}
-	h.mu.Lock()
-	h.validator = validator
-	h.mu.Unlock()
+	t.mu.Lock()
+	t.validator = validator
+	t.mu.Unlock()
 }
 
 // commit flushes the partial file and moves it to its final name. A nil file
 // means the bytes are already on disk from an earlier attempt and only the
 // rename is missing.
-func (h *Handle) commit(file *os.File) error {
-	part, final := h.paths()
+func (t *Transfer) commit(file *os.File) error {
+	part, final := t.paths()
 	if file != nil {
 		if err := file.Sync(); err != nil {
 			return fmt.Errorf("sync %s: %w", part, err)
@@ -255,22 +250,45 @@ func (h *Handle) commit(file *os.File) error {
 // openPartial creates the partial file and positions it at offset, dropping
 // anything past it.
 func openPartial(path string, offset int64) (*os.File, error) {
+	return openFile(path, offset, true)
+}
+
+// openChunked opens the partial file for positional writes and makes sure it is
+// at least size bytes long, without dropping what is already there.
+func openChunked(path string, size int64) (*os.File, error) {
+	return openFile(path, size, false)
+}
+
+func openFile(path string, size int64, truncate bool) (*os.File, error) {
 	if dir := filepath.Dir(path); dir != "" {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, fmt.Errorf("create %s: %w", dir, err)
 		}
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o644)
+	flags := os.O_CREATE | os.O_WRONLY
+	if !truncate {
+		flags = os.O_CREATE | os.O_RDWR
+	}
+	file, err := os.OpenFile(path, flags, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	if err := file.Truncate(offset); err != nil {
-		file.Close()
-		return nil, fmt.Errorf("truncate %s: %w", path, err)
+	if truncate {
+		if err := file.Truncate(size); err != nil {
+			file.Close()
+			return nil, fmt.Errorf("truncate %s: %w", path, err)
+		}
+		if _, err := file.Seek(size, io.SeekStart); err != nil {
+			file.Close()
+			return nil, fmt.Errorf("seek %s: %w", path, err)
+		}
+		return file, nil
 	}
-	if _, err := file.Seek(offset, io.SeekStart); err != nil {
-		file.Close()
-		return nil, fmt.Errorf("seek %s: %w", path, err)
+	if info, err := file.Stat(); err == nil && info.Size() < size {
+		if err := file.Truncate(size); err != nil {
+			file.Close()
+			return nil, fmt.Errorf("extend %s: %w", path, err)
+		}
 	}
 	return file, nil
 }
