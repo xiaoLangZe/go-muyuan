@@ -1,4 +1,4 @@
-// Package manager downloads files over a shared connection budget.
+// Package muyuan downloads files over a shared connection budget.
 //
 // A Manager owns one budget of connections and a limit on how many files may be
 // downloaded at the same time. Files are added as tasks; the manager decides
@@ -7,8 +7,8 @@
 // second, and whatever is left is then dealt out round by round, so a single
 // file never takes the whole budget.
 //
-//	m := manager.New(manager.WithThreads(16), manager.WithMaxFiles(3),
-//		manager.WithDefaultDir("downloads"))
+//	m := muyuan.New(muyuan.WithThreads(16), muyuan.WithMaxFiles(3),
+//		muyuan.WithDefaultDir("downloads"))
 //	defer m.Close()
 //
 //	a, err := m.AddTask("downloads", "https://example.com/a.iso")
@@ -16,8 +16,8 @@
 //		return err
 //	}
 //	b, err := m.AddTask("downloads", "https://example.com/b.iso",
-//		manager.WithFileName("renamed.iso"),
-//		manager.WithProxy("socks5://127.0.0.1:1080"))
+//		muyuan.WithFileName("renamed.iso"),
+//		muyuan.WithProxy("socks5://127.0.0.1:1080"))
 //	if err != nil {
 //		return err
 //	}
@@ -34,16 +34,18 @@
 //	if err := b.Wait(); err != nil {
 //		return err
 //	}
-package manager
+package muyuan
 
 import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"go-muyuan/internal/engine"
+	"github.com/xiaoLangZe/go-muyuan/internal/engine"
 )
 
 // Defaults for a manager that is created without an explicit budget.
@@ -60,9 +62,11 @@ var ErrClosed = errors.New("manager is closed")
 type Option func(*options)
 
 type options struct {
-	threads  int
-	maxFiles int
-	defaults []engine.Option
+	threads    int
+	maxFiles   int
+	rootDir    string
+	defaultDir string
+	defaults   []engine.Option
 }
 
 // WithThreads sets how many connections the manager may have in flight across
@@ -86,9 +90,22 @@ func defaultOption(opt engine.Option) Option {
 	return func(o *options) { o.defaults = append(o.defaults, opt) }
 }
 
+// WithRootDir sets the directory that relative download paths are resolved
+// against. Without it, relative paths are resolved against the directory of
+// the executable, so a program started from any working directory writes next
+// to itself. A relative root is itself resolved against the executable's
+// directory; an absolute destination passed to AddTask ignores the root
+// entirely.
+func WithRootDir(dir string) Option {
+	return func(o *options) { o.rootDir = dir }
+}
+
 // WithDefaultDir sets the directory tasks are written to when AddTask is not
-// given one.
-func WithDefaultDir(dir string) Option { return defaultOption(engine.WithDir(dir)) }
+// given one. A relative value is resolved against the root, an absolute one is
+// used as it is.
+func WithDefaultDir(dir string) Option {
+	return func(o *options) { o.defaultDir = dir }
+}
 
 // WithDefaultProxy routes every task's connections through the proxy at rawURL
 // unless the task overrides it with WithProxy. See WithProxy for what a proxy
@@ -171,11 +188,13 @@ type Manager struct {
 	cancel   context.CancelFunc
 	loopDone chan struct{}
 
-	threads  int
-	maxFiles int
-	defaults []engine.Option
-	tasks    []*Task
-	closed   bool
+	threads    int
+	maxFiles   int
+	root       string
+	defaultDir string
+	defaults   []engine.Option
+	tasks      []*Task
+	closed     bool
 }
 
 // New creates a manager and starts its scheduler.
@@ -192,23 +211,36 @@ func New(opts ...Option) *Manager {
 	if o.maxFiles < 1 {
 		o.maxFiles = 1
 	}
+	root := o.rootDir
+	if root == "" {
+		root = exeDir()
+	} else if !filepath.IsAbs(root) {
+		root = filepath.Join(exeDir(), root)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Manager{
-		wake:     make(chan struct{}, 1),
-		base:     ctx,
-		cancel:   cancel,
-		loopDone: make(chan struct{}),
-		threads:  o.threads,
-		maxFiles: o.maxFiles,
-		defaults: o.defaults,
+		wake:       make(chan struct{}, 1),
+		base:       ctx,
+		cancel:     cancel,
+		loopDone:   make(chan struct{}),
+		threads:    o.threads,
+		maxFiles:   o.maxFiles,
+		root:       root,
+		defaultDir: o.defaultDir,
+		defaults:   o.defaults,
 	}
 	go m.loop()
 	return m
 }
 
 // AddTask queues a download. destDir is the directory the file is written to
-// and may be empty when the manager has a default directory; rawURL is the
-// target. The options override the manager's defaults for this task alone.
+// and may be empty; rawURL is the target. The options override the manager's
+// defaults for this task alone.
+//
+// The directory is decided in three steps: an absolute destDir is used as it
+// is; a relative destDir is resolved against the root; an empty destDir falls
+// back to WithDefaultDir, which follows the same rule and reaches the root
+// itself when it is empty too.
 //
 // The task starts when the manager's budget has room for it. The returned task
 // is its handle.
@@ -220,9 +252,7 @@ func (m *Manager) AddTask(destDir, rawURL string, opts ...TaskOption) (*Task, er
 	}
 	all := make([]engine.Option, 0, len(m.defaults)+1+len(opts))
 	all = append(all, m.defaults...)
-	if destDir != "" {
-		all = append(all, engine.WithDir(destDir))
-	}
+	all = append(all, engine.WithDir(resolveDir(m.root, m.defaultDir, destDir)))
 	all = append(all, opts...)
 	base := m.base
 	m.mu.Unlock()
@@ -333,6 +363,37 @@ func (m *Manager) Close() {
 		t.markClosed()
 	}
 	<-m.loopDone
+}
+
+// exeDir returns the directory of the running executable. It is the base for
+// every relative download path when no root is set, which keeps the output
+// independent of the working directory the program happened to be started
+// from. os.Executable covers Windows, macOS and Linux; when it fails, the
+// working directory is the best that is left.
+func exeDir() string {
+	if exe, err := os.Executable(); err == nil {
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
+		return filepath.Dir(exe)
+	}
+	if wd, err := os.Getwd(); err == nil {
+		return wd
+	}
+	return "."
+}
+
+// resolveDir picks the directory a task writes to. An absolute destDir is
+// taken as it is, a relative one is placed under root, and an empty one falls
+// back to defaultDir, reaching root itself when that is empty too.
+func resolveDir(root, defaultDir, destDir string) string {
+	if destDir == "" {
+		destDir = defaultDir
+	}
+	if filepath.IsAbs(destDir) {
+		return destDir
+	}
+	return filepath.Join(root, destDir)
 }
 
 // poke wakes the scheduler without blocking.

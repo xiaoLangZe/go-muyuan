@@ -1,10 +1,10 @@
-package manager
+package muyuan
 
 import (
 	"net/http"
 	"time"
 
-	"go-muyuan/internal/engine"
+	"github.com/xiaoLangZe/go-muyuan/internal/engine"
 )
 
 // TaskOption configures one task. Every task starts from the manager's

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"go-muyuan/internal/filename"
-	"go-muyuan/internal/hostguard"
+	"github.com/xiaoLangZe/go-muyuan/internal/filename"
+	"github.com/xiaoLangZe/go-muyuan/internal/hostguard"
 )
 
 // errIncomplete reports a transfer that stopped without finishing and without

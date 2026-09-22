@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-muyuan/internal/hostguard"
+	"github.com/xiaoLangZe/go-muyuan/internal/hostguard"
 )
 
 // Sentinel errors reported by the transfer engine. Failures returned by a

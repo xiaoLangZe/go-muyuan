@@ -1,6 +1,6 @@
-package manager
+package muyuan
 
-import "go-muyuan/internal/engine"
+import "github.com/xiaoLangZe/go-muyuan/internal/engine"
 
 // Status is the lifecycle state of a download.
 type Status = engine.Status

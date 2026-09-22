@@ -1,4 +1,4 @@
-package manager
+package muyuan
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"go-muyuan/internal/engine"
+	"github.com/xiaoLangZe/go-muyuan/internal/engine"
 )
 
 // doneSignal is a completion channel that several goroutines may close, in

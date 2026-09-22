@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"go-muyuan/internal/filename"
+	"github.com/xiaoLangZe/go-muyuan/internal/filename"
 )
 
 // PartSuffix marks the file a transfer is written to until it completes.

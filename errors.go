@@ -1,11 +1,11 @@
-package manager
+package muyuan
 
-import "go-muyuan/internal/engine"
+import "github.com/xiaoLangZe/go-muyuan/internal/engine"
 
 // Sentinel errors reported by this package. Failures returned by a task wrap one
 // of them where applicable, so errors.Is works:
 //
-//	if errors.Is(err, manager.ErrBlockedHost) {
+//	if errors.Is(err, muyuan.ErrBlockedHost) {
 //		// the URL points somewhere the downloader refuses to go
 //	}
 var (

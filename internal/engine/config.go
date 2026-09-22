@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"go-muyuan/internal/hostguard"
+	"github.com/xiaoLangZe/go-muyuan/internal/hostguard"
 )
 
 const (
