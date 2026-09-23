@@ -2,7 +2,7 @@
 
 一个 Go 的 HTTP 下载库。一个下载器管理多个文件，它们共享一份连接预算；单个文件可以同时用多条连接下载。每个文件都是一个任务、都有句柄，可以**暂停**、**继续**、**重新下载**、**取消/删除**，进度既能订阅事件流实时拿到，也能随时轮询。
 
-[English](README.md)
+[English](README.md) · [Wiki 文档](https://github.com/xiaoLangZe/go-muyuan/wiki)
 
 ---
 
@@ -51,10 +51,14 @@
 ```
 go-muyuan/
 ├── go.mod
+├── LICENSE                  MIT
 ├── README.md
 ├── README.zh-CN.md
 ├── .gitignore
+├── .github/workflows/ci.yml 每次推送跑 gofmt、vet、build 与测试
 ├── *.go                     公开包：import "github.com/xiaoLangZe/go-muyuan"
+├── examples/                两个可跑程序：单文件，以及队列
+├── docs/wiki/               GitHub wiki 页面的源文件
 └── internal/                外部项目无法导入
     ├── engine/              传输引擎：单连接与分片并发两种模式共用一套生命周期
     ├── filename/            文件名推导与净化
@@ -65,17 +69,23 @@ go-muyuan/
 
 ## 引入
 
-```
+```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
-
-然后：
 
 ```go
 import "github.com/xiaoLangZe/go-muyuan"
 ```
 
-仓库还没发布时，在调用方的 `go.mod` 里用 `replace` 指向本地检出：
+包名是 `muyuan`，所以调用写成 `muyuan.New(...)`。
+
+当前版本是 `v0.1.0`。按语义化版本，`v0.x` 允许在次版本之间引入破坏性变更，所以依赖它请锁版本：
+
+```
+require github.com/xiaoLangZe/go-muyuan v0.1.0
+```
+
+如果要对本地检出开发，用 `replace` 指过去：
 
 ```
 require github.com/xiaoLangZe/go-muyuan v0.0.0
@@ -149,6 +159,8 @@ func main() {
 ```
 
 `AddTask(destDir, rawURL string, opts ...TaskOption)` 第一个参数是下载目录，按三分支解析：绝对路径原样使用；相对路径拼接到根目录；留空则回退到 `WithDefaultDir`（同样按此规则解析，若它也为空则用根目录本身）。根目录默认是可执行文件所在目录，因此不设任何选项时，下载文件落在 exe 同级目录。
+
+可直接运行的版本在 [`examples/basic`](examples/basic)（单文件 + 实时进度）和 [`examples/queue`](examples/queue)（多文件共享一份预算）。
 
 ## 核心概念
 
@@ -527,7 +539,7 @@ m := muyuan.New(muyuan.WithThreads(8), muyuan.WithDefaultChunkSize(512<<10))
 - **`Workers` 报告的是分配量，不是实际开着的连接数。** 它是调度器分配的数字，引擎会照办，但最多用到「文件能切出的片数」那么多。1 MiB 的文件配 16 条连接预算时报 16，实际只开 4 条 —— 因为最小切片长度只够切 4 片。没有浪费（多余的 worker 会立刻退出），但这个数字是预算而不是实测值。
 - **一个事件订阅占一个协程。** 它由首次 `Events()` 调用启动，所以没人订阅的任务零开销。订阅了却不再读的调用方应该 `Delete` 或 `Close` 来释放它。
 - **没有实现跨进程续传。** 崩溃留下的 `.part` 能在同一次运行内续上，但没有附带文件记录位图，所以新进程会从头下。
-- **还没有 `LICENSE` 文件。** 发布前记得补。
+- **测试文件不在版本库里。** 见[测试](#测试)。
 
 ## 测试
 
@@ -535,9 +547,9 @@ m := muyuan.New(muyuan.WithThreads(8), muyuan.WithDefaultChunkSize(512<<10))
 go test ./...
 ```
 
-81 个测试，全部通过：
+**测试文件没有提交。** `.gitignore` 排除了 `*_test.go`，所以克隆下来一个测试都没有，`go test ./...` 只会报 "no test files"，CI 的测试步骤也在不做任何检查的情况下通过。以下描述的是针对这份源码在本地运行的套件，共 **87 个测试**：
 
 - **`internal/engine`（56 个）** —— 单连接路径的完整行为：文件名推导与净化、序号避让、覆盖、暂停续传（含服务端不支持 Range 的分支）、重下、删除、重试与 4xx 不重试、停滞超时、context 取消，以及两个并发压测（把全部控制操作同时猛打）。分片路径：并发数等于配置的连接数、分片请求**恰好不重叠地覆盖整个文件**、固定与自动切片长度、传输过程中增减连接数、单连接升级为分片、小文件不分片、服务端忽略 Range 时的回退。代理：HTTP 转发代理、测试内实现的最小 SOCKS5 服务端、账号密码鉴权、经代理分片、非法 scheme、代理地址被拦、以及**配了代理仍然拦内网目标**。另有位图与切片调整器的单元测试。
-- **根包（18 个）** —— 全局连接预算不被突破、同时文件数上限、**广度优先分配**（有文件排队时已运行文件不得加深）、空闲连接下沉到已运行文件、暂停让出连接、排队任务在预算释放后启动、预算热调整、任务控制操作、任务级文件名、关闭后所有任务可等待、内网地址拦截。事件流：进度与状态投递、节流、错误事件、终态后关闭、慢消费者、订阅后不读不泄漏协程。
+- **根包（24 个）** —— 全局连接预算不被突破、同时文件数上限、**广度优先分配**（有文件排队时已运行文件不得加深）、空闲连接下沉到已运行文件、暂停让出连接、排队任务在预算释放后启动、预算热调整、任务控制操作、任务级文件名、关闭后所有任务可等待、内网地址拦截。事件流：进度与状态投递、节流、错误事件、终态后关闭、慢消费者、订阅后不读不泄漏协程。下载根目录：`resolveDir` 对绝对、相对、空三种目标的取舍，`exeDir` 返回绝对路径，默认根为可执行文件目录，相对 `WithRootDir` 的解析，以及 `AddTask` 自动创建所需目录。
 - **`internal/filename`（1 个）** —— 文件名净化。
 - **`internal/hostguard`（6 个）** —— 全部被拦地址类别（环回、私网、链路本地、组播、未指定、保留网段、IPv4-mapped IPv6）与可路由地址放行、host 输入裁剪、解析器路径，以及建连时二次校验在不建立连接的情况下拒绝地址。

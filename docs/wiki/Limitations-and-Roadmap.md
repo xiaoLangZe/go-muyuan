@@ -82,11 +82,12 @@ These are documented but worth repeating here.
 
 ### The tests are not in the repository
 
-The module has 87 tests — 56 for the transfer engine, 24 for the manager, 6 for
-the host guard, 1 for file naming — including concurrency stress tests and a race
-detector run in CI. **They are not committed.** The repository's `.gitignore`
-excludes `*_test.go`, so a clone contains no tests and the CI job's test step
-reports "no test files" and passes vacuously.
+The module has 87 tests — 56 for the transfer engine, 24 for the root package, 6
+for the host guard, 1 for file naming — including concurrency stress tests.
+**They are not committed.** The repository's `.gitignore` excludes `*_test.go`, so
+a clone contains no tests and the CI job's test step reports "no test files" and
+passes vacuously. The CI job is set up to run them under the race detector; with
+nothing to run, that check is dormant too.
 
 This is a known, deliberate-but-questionable state: it means the test suite is not
 verifiable by anyone else, and a visitor has no evidence of quality.

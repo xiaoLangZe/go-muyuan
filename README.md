@@ -6,7 +6,7 @@ Every file is a task with a handle that can be **paused**, **resumed**,
 **restarted** and **cancelled/deleted**, and progress can be watched live through
 an event stream or by polling.
 
-[中文文档](README.zh-CN.md)
+[中文文档](README.zh-CN.md) · [Wiki](https://github.com/xiaoLangZe/go-muyuan/wiki)
 
 ---
 
@@ -65,10 +65,14 @@ an event stream or by polling.
 ```
 go-muyuan/
 ├── go.mod
+├── LICENSE                  MIT
 ├── README.md
 ├── README.zh-CN.md
 ├── .gitignore
+├── .github/workflows/ci.yml gofmt, vet, build and test on every push
 ├── *.go                     the public package: import "github.com/xiaoLangZe/go-muyuan"
+├── examples/                two runnable programs: one file, and a queue
+├── docs/wiki/               the source of the GitHub wiki pages
 └── internal/                not importable from outside the module
     ├── engine/              the transfer engine: one lifecycle for both the
     │                        single-connection and the parallel path
@@ -81,18 +85,24 @@ packages are implementation details and cannot be imported by other projects.
 
 ## Install
 
-```
+```bash
 go get github.com/xiaoLangZe/go-muyuan
 ```
-
-Then:
 
 ```go
 import "github.com/xiaoLangZe/go-muyuan"
 ```
 
-Before the repository is published, point at a local checkout from the
-consuming module's `go.mod` with a `replace` directive:
+The package is named `muyuan`, so calls read `muyuan.New(...)`.
+
+The current release is `v0.1.0`. Under semantic versioning a `v0.x` release may
+introduce breaking changes in a minor version, so pin what you depend on:
+
+```
+require github.com/xiaoLangZe/go-muyuan v0.1.0
+```
+
+To work against a local checkout instead, point at it with a `replace` directive:
 
 ```
 require github.com/xiaoLangZe/go-muyuan v0.0.0
@@ -172,6 +182,9 @@ used as-is; a relative `destDir` is joined onto the root directory; an empty
 finally the root itself if that is also empty). The root defaults to the
 directory of the running executable, so with no options set, downloads land next
 to the exe.
+
+Runnable versions are in [`examples/basic`](examples/basic) (one file, live
+progress) and [`examples/queue`](examples/queue) (several files over one budget).
 
 ## Concepts
 
@@ -678,7 +691,7 @@ m := muyuan.New(muyuan.WithThreads(8), muyuan.WithDefaultChunkSize(512<<10))
 - **Cross-process resume is not implemented.** A `.part` file left by a crash can
   be resumed within the same run, but no sidecar file records the bitmap, so a new
   process starts the file over.
-- **No `LICENSE` file yet.** Add one before publishing.
+- **The test files are not in the repository.** See [Tests](#tests).
 
 ## Tests
 
@@ -686,7 +699,10 @@ m := muyuan.New(muyuan.WithThreads(8), muyuan.WithDefaultChunkSize(512<<10))
 go test ./...
 ```
 
-81 tests, all passing:
+**The test files are not committed.** `.gitignore` excludes `*_test.go`, so a
+clone contains none of them, `go test ./...` reports "no test files", and the CI
+job's test step passes without checking anything. What follows describes the suite
+that runs against this source locally — 87 tests:
 
 - **`internal/engine` (56)** — the single-connection path in full: name
   derivation and sanitising, counter suffixes, overwriting, pause and resume
@@ -702,7 +718,7 @@ go test ./...
   the test, username/password authentication, parallel fetching through a proxy,
   invalid schemes, a blocked proxy, and an internal target still being refused
   with a proxy configured. Plus unit tests for the bitmap and the block shaper.
-- **the root package (18)** — the global connection budget never being exceeded, the
+- **the root package (24)** — the global connection budget never being exceeded, the
   simultaneous file limit, **breadth-first allocation** (a running file must not
   deepen while another waits), spare connections deepening the running files,
   pausing handing connections over, a queued task starting when the budget frees
@@ -710,7 +726,11 @@ go test ./...
   names, every task being waitable after close, and internal addresses being
   refused. Events: progress and status delivery, throttling, the error event,
   closing after the terminal event, a slow consumer, and no leaked goroutines
-  from a subscription that is never read.
+  from a subscription that is never read. Download roots: `resolveDir` choosing
+  between an absolute, a relative and an empty destination, `exeDir` returning an
+  absolute path, the default root being the executable's directory, a relative
+  `WithRootDir` being resolved against it, and `AddTask` creating the directories
+  it needs.
 - **`internal/filename` (1)** — file name sanitising.
 - **`internal/hostguard` (6)** — every blocked address class (loopback, private,
   link-local, multicast, unspecified, reserved ranges, IPv4-mapped IPv6) and the
